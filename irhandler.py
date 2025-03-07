@@ -62,10 +62,10 @@ class IRHandler:
             # if it is a loop (backedge to the same instruction), else leave it as is
             backJumpInstr, backJmpTgt = stmtList[index + tgt-1]
             if backJmpTgt < 0 and index+tgt-1+backJmpTgt==index:
-                print(f"Loop Target : {backJumpInstr}, {backJmpTgt}")
+                # print(f"Loop Target : {backJumpInstr}, {backJmpTgt}")
                 stmtList[index + tgt - 1] = (backJumpInstr, backJmpTgt - 1)
 
-    def addInstruction(self, stmtList, inst, pos):
+    def addInstruction(self, stmtList, inst, pos,offset=1):
         """[summary]
 
         Args:
@@ -78,7 +78,7 @@ class IRHandler:
             return
 
         if isinstance(inst, ChironAST.ConditionCommand):
-            print("[Skip] Instruction Type not supported for addition. \n")
+            # print("[Skip] Instruction Type not supported for addition. \n")
             return
         index = 0
 
@@ -95,7 +95,7 @@ class IRHandler:
             index += 1
         # We only allow non-jump statement addition as of now.
 
-        stmtList.insert(pos, (inst, 1))
+        stmtList.insert(pos, (inst, offset))
 
     def removeInstruction(self, stmtList, pos):
         """[summary]
@@ -122,6 +122,9 @@ class IRHandler:
         # We only allow non-jump/non-conditional statement removal as of now.
         stmtList[pos] = (ChironAST.NoOpCommand(), 1)
 
+    def update_target(self,stmtlist,pos,new_target):
+        stmtlist[pos]=(stmtlist[pos][0],new_target)
+
     def pretty_print(self, irList):
         """
             We pass a IR list and print it here.
@@ -131,3 +134,4 @@ class IRHandler:
         print("The number after the opcode name represents the jump offset \nrelative to that statement.\n")
         for idx, item in enumerate(irList):
             print(f"[L{idx}]".rjust(5), item[0], f"[{item[1]}]")
+    

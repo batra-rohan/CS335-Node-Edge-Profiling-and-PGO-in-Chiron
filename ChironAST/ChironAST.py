@@ -45,6 +45,16 @@ class ArrayIncrement(Instruction):
 
     def __str__(self):
         return self.name + "[" +str(self.idx) + "]" + "++"
+
+class ArrayAssignment(Instruction):
+    def __init__(self,arr_name,index,value):
+        self.name=arr_name
+        self.idx = index
+        self.value=value
+
+    def __str__(self):
+        return self.name + "[" +str(self.idx) + "]" + "=" +str(self.value)
+
         
 # Not Implemented Yet.
 class AssertCommand(Instruction):

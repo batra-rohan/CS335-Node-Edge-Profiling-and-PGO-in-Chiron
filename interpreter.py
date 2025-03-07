@@ -113,6 +113,8 @@ class ConcreteInterpreter(Interpreter):
             ntgt=self.handleArrayInit(stmt,tgt)
         elif isinstance(stmt,ChironAST.ArrayIncrement):
             ntgt=self.handleArrayIncr(stmt,tgt)
+        elif isinstance(stmt,ChironAST.ArrayAssignment):
+            ntgt=self.handleArrayAss(stmt,tgt)
         else:
             raise NotImplementedError("Unknown instruction: %s, %s."%(type(stmt), stmt))
 
@@ -182,6 +184,11 @@ class ConcreteInterpreter(Interpreter):
         print("Array Increment Command")
         pos=stmt.idx
         exec(f"self.prg.{stmt.name}[{pos}] += 1")
+        return 1
+    def handleArrayAss(self,stmt,tgt):
+        print("Array Assignemnt Command")
+        pos=stmt.idx
+        exec(f"self.prg.{stmt.name}[{pos}] = {stmt.value}")
         return 1
     
     def DumpProfilingData(self,leaderIndices):
