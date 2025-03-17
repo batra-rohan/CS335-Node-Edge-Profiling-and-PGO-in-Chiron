@@ -1,9 +1,10 @@
-
 from ChironAST import ChironAST
 from ChironHooks import Chironhooks
 import turtle
 import csv
 import os
+import numpy as np
+from bisect import bisect_left  # Import for binary search
 
 Release="Chiron v5.3"
 
@@ -191,37 +192,76 @@ class ConcreteInterpreter(Interpreter):
         exec(f"self.prg.{stmt.name}[{pos}] = {stmt.value}")
         return 1
     
-    def DumpProfilingData(self,leaderIndices):
+    def DumpProfilingData(self, leaderIndices):
         file_path = self.args.progfl
 
         # Extracting the filename without the extension
         filename = os.path.splitext(os.path.basename(file_path))[0]
 
-        # Initialize the block_counters dictionary
-        block_counters = {}
-
-        # Obtainig the node counters
+        # Obtain the node counters
         node_counter_array = getattr(self.prg, 'node_counters')
 
+        # Obtain the edge-related arrays
         edge_counter_array = getattr(self.prg, 'edge_counters')
         edge_source_array = getattr(self.prg, 'edge_source')
         edge_target_array = getattr(self.prg, 'edge_target')
 
+        # Initialize arrays for jump and fall-through counters
+        jump_target_array = np.zeros(len(node_counter_array), dtype=int)
+        jump_counter_array = np.zeros(len(node_counter_array), dtype=int)
+        fall_through_counter_array = np.zeros(len(node_counter_array), dtype=int)
 
-        for idx, count in enumerate(node_counter_array):
-            block_counters[leaderIndices[idx]] = count
+        # Compute jump and fall-through counters
+        for idx, source in enumerate(edge_source_array):
+            target = edge_target_array[idx]
 
+            # Perform binary search to find the indices of source and target in leaderIndices
+            source_idx = bisect_left(leaderIndices, source)
+            if source != target:
+                # Has Jump
+                jump_target_array[source_idx] = target
+                jump_counter_array[source_idx] += edge_counter_array[idx]
+
+
+        # Compute fall-through counters as node counter minus jump counter
+        for idx in range(len(node_counter_array)):
+            fall_through_counter_array[idx] = node_counter_array[idx] - jump_counter_array[idx]
+
+        # For nodes where jump counters are not updated, set them equal to node counters
+        for idx in range(len(node_counter_array)):
+            if jump_counter_array[idx] == 0:
+                jump_counter_array[idx] = node_counter_array[idx]
+                fall_through_counter_array[idx]=-1
+                
+        # Generate the output filename
         filename = f"Profiling_Data_{filename}.csv"
 
-        # Write block_counters to CSV
+        # Write profiling data to CSV
         with open(filename, 'w', newline='') as file:
-            fieldnames = ['Leader Index of Basic block', 'Node Counter','Jump Target LI','Jump Edge Counter','Fall Through Edge Counter']
+            fieldnames = [
+                'Leader Index of Basic Block',
+                'Node Counter',
+                'Jump Target LI',
+                'Jump Edge Counter',
+                'Fall Through Edge Counter'
+            ]
             writer = csv.writer(file)
 
             # Write the header
             writer.writerow(fieldnames)
 
             # Write each block and its counter value
-            for key, value in block_counters.items():
-                writer.writerow([key, value])
+            for idx, leader_index in enumerate(leaderIndices):
+                node_counter = node_counter_array[idx]
+                jump_target_li = jump_target_array[idx]
+                jump_edge_counter = jump_counter_array[idx]
+                fall_through_edge_counter = fall_through_counter_array[idx]
+
+                writer.writerow([
+                    leader_index,
+                    node_counter,
+                    jump_target_li,
+                    jump_edge_counter,
+                    fall_through_edge_counter
+                ])
 
