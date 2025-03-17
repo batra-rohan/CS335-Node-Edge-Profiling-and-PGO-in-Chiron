@@ -18,7 +18,6 @@ from networkx.drawing.nx_agraph import to_agraph
 
 
 def buildCFG(ir, cfgName="", isSingle=False):
-
     startBB = BasicBlock('START')
     endBB = BasicBlock('END')
     leaderIndices = {0, len(ir)}

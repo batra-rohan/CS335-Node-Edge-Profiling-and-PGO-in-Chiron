@@ -201,16 +201,21 @@ class ConcreteInterpreter(Interpreter):
         block_counters = {}
 
         # Obtainig the node counters
-        counter_array = getattr(self.prg, 'node_counters')
+        node_counter_array = getattr(self.prg, 'node_counters')
 
-        for idx, count in enumerate(counter_array):
+        edge_counter_array = getattr(self.prg, 'edge_counters')
+        edge_source_array = getattr(self.prg, 'edge_source')
+        edge_target_array = getattr(self.prg, 'edge_target')
+
+
+        for idx, count in enumerate(node_counter_array):
             block_counters[leaderIndices[idx]] = count
 
         filename = f"Profiling_Data_{filename}.csv"
 
         # Write block_counters to CSV
         with open(filename, 'w', newline='') as file:
-            fieldnames = ['Leader Index of Basic block', 'Node Counter']
+            fieldnames = ['Leader Index of Basic block', 'Node Counter','Jump Target LI','Jump Edge Counter','Fall Through Edge Counter']
             writer = csv.writer(file)
 
             # Write the header

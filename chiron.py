@@ -308,21 +308,21 @@ if __name__ == "__main__":
         leaderIndices=instr.add_instrumentation_code(irHandler)
         irHandler.pretty_print(irHandler.ir)
         # Running the code and computing the counters
-        # inptr = ConcreteInterpreter(irHandler, args)
-        # terminated = False
-        # inptr.initProgramContext(args.params)
-        # while True:
-        #     terminated = inptr.interpret()
-        #     if terminated:
-        #         break
-        # # Displaying the counters
-        # inptr.DumpProfilingData(leaderIndices)
-        # print("Program Ended.")
-        # print()
-        # print("Press ESCAPE to exit")
-        # turtle.listen()
-        # turtle.onkeypress(stopTurtle, "Escape")
-        # turtle.mainloop()
+        inptr = ConcreteInterpreter(irHandler, args)
+        terminated = False
+        inptr.initProgramContext(args.params)
+        while True:
+            terminated = inptr.interpret()
+            if terminated:
+                break
+        # Displaying the counters
+        inptr.DumpProfilingData(leaderIndices)
+        print("Program Ended.")
+        print()
+        print("Press ESCAPE to exit")
+        turtle.listen()
+        turtle.onkeypress(stopTurtle, "Escape")
+        turtle.mainloop()
 
     if args.SBFL:
         if not args.buggy:

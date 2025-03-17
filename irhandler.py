@@ -49,21 +49,21 @@ class IRHandler:
         self.ir = ir
         return ir
 
-    def updateJump(self, stmtList, index, pos):
+    def updateJumpUpperCond(self, stmtList, index, pos):
         stmt, tgt = stmtList[index]
-        # Don't update the conditional nodes whose
-        # loops and targets are above the insertion point
-        # since these don't get affected in any way.
-        if tgt > 0 and index + tgt > pos:
+       # Update the conditional targets which point below the added instruction position
+        if tgt > 0 and index + tgt >= pos:
             newTgt = tgt + 1
             # update curr conditional instruction's target
             stmtList[index] = (stmt, newTgt)
-            # update the target instruction's jump value
-            # if it is a loop (backedge to the same instruction), else leave it as is
-            backJumpInstr, backJmpTgt = stmtList[index + tgt-1]
-            if backJmpTgt < 0 and index+tgt-1+backJmpTgt==index:
-                # print(f"Loop Target : {backJumpInstr}, {backJmpTgt}")
-                stmtList[index + tgt - 1] = (backJumpInstr, backJmpTgt - 1)
+
+    def updateJumpLowerCond(self, stmtList, index, pos):
+        # Update the conditional targets below the added instruction whose jump is above it
+        stmt, tgt = stmtList[index]
+        if tgt < 0 and index + tgt < pos:
+            newTgt = tgt -1
+            # update curr conditional instruction's target
+            stmtList[index] = (stmt, newTgt)
 
     def addInstruction(self, stmtList, inst, pos,offset=1):
         """[summary]
@@ -77,9 +77,9 @@ class IRHandler:
             print("[error] POSITION given is past the instruction list.")
             return
 
-        if isinstance(inst, ChironAST.ConditionCommand):
-            # print("[Skip] Instruction Type not supported for addition. \n")
-            return
+        # if isinstance(inst, ChironAST.ConditionCommand):
+        #     # print("[Skip] Instruction Type not supported for addition. \n")
+        #     return
         index = 0
 
         # We must consider the conditional jumps and targets of
@@ -87,12 +87,19 @@ class IRHandler:
         # instruction must be added. Other conditional statements
         # will just shift without change of labels since
         # all the jump target numbers are relative.
-        while index < pos:
+        while index<pos:
             if isinstance(stmtList[index][0], ChironAST.ConditionCommand):
                 # Update the target of this conditional statement and the
                 # target statment's target number accordingly.
-                self.updateJump(stmtList, index, pos)
+                self.updateJumpUpperCond(stmtList, index, pos)
             index += 1
+        while index<len(stmtList):
+            if isinstance(stmtList[index][0], ChironAST.ConditionCommand):
+                # Update the target of this conditional statement and the
+                # target statment's target number accordingly.
+                    self.updateJumpLowerCond(stmtList, index, pos)
+            index += 1
+
         # We only allow non-jump statement addition as of now.
 
         stmtList.insert(pos, (inst, offset))
