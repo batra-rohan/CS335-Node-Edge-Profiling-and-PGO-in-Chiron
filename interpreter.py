@@ -265,3 +265,31 @@ class ConcreteInterpreter(Interpreter):
     #                 fall_through_edge_counter
     #             ])
 
+    def DumpProfilingData(self,leaderIndices):
+        file_path = self.args.progfl
+
+        # Extracting the filename without the extension
+        filename = os.path.splitext(os.path.basename(file_path))[0]
+
+        # Initialize the block_counters dictionary
+        block_counters = {}
+
+        # Obtainig the node counters
+        counter_array = getattr(self.prg, 'node_counters')
+
+        for idx, count in enumerate(counter_array):
+            block_counters[leaderIndices[idx]] = count
+
+        filename = f"Profiling_Data_{filename}.csv"
+
+        # Write block_counters to CSV
+        with open(filename, 'w', newline='') as file:
+            fieldnames = ['Leader Index of Basic block', 'Node Counter']
+            writer = csv.writer(file)
+
+            # Write the header
+            writer.writerow(fieldnames)
+
+            # Write each block and its counter value
+            for key, value in block_counters.items():
+                writer.writerow([key, value])
