@@ -49,23 +49,37 @@ class IRHandler:
         self.ir = ir
         return ir
 
-    def updateJumpUpperCond(self, stmtList, index, pos):
+    def updateJumpUpperCond(self, stmtList, index, pos, add_node_cnt):
         stmt, tgt = stmtList[index]
        # Update the conditional targets which point below the added instruction position
-        if tgt > 0 and index + tgt >= pos:
-            newTgt = tgt + 1
-            # update curr conditional instruction's target
-            stmtList[index] = (stmt, newTgt)
+        if(add_node_cnt==0):
+            if tgt > 0 and index + tgt >= pos:
+                newTgt = tgt + 1
+                # update curr conditional instruction's target
+                stmtList[index] = (stmt, newTgt)
+        else:
+            if tgt > 0 and index + tgt > pos:
+                newTgt = tgt + 1
+                # update curr conditional instruction's target
+                stmtList[index] = (stmt, newTgt)
+        
 
-    def updateJumpLowerCond(self, stmtList, index, pos):
+    def updateJumpLowerCond(self, stmtList, index, pos,add_node_cnt):
         # Update the conditional targets below the added instruction whose jump is above it
         stmt, tgt = stmtList[index]
-        if tgt < 0 and index + tgt < pos:
-            newTgt = tgt -1
-            # update curr conditional instruction's target
-            stmtList[index] = (stmt, newTgt)
+        if(add_node_cnt==0):
+            if tgt < 0 and index + tgt < pos:
+                newTgt = tgt -1
+                # update curr conditional instruction's target
+                stmtList[index] = (stmt, newTgt)
+        else:
+            if tgt < 0 and index + tgt <=pos:
+                newTgt = tgt -1
+                # update curr conditional instruction's target
+                stmtList[index] = (stmt, newTgt)
 
-    def addInstruction(self, stmtList, inst, pos,offset=1):
+
+    def addInstruction(self, stmtList, inst, pos, add_node_cnt=0, offset=1):
         """[summary]
 
         Args:
@@ -91,17 +105,16 @@ class IRHandler:
             if isinstance(stmtList[index][0], ChironAST.ConditionCommand):
                 # Update the target of this conditional statement and the
                 # target statment's target number accordingly.
-                self.updateJumpUpperCond(stmtList, index, pos)
+                self.updateJumpUpperCond(stmtList, index, pos, add_node_cnt)
             index += 1
         while index<len(stmtList):
             if isinstance(stmtList[index][0], ChironAST.ConditionCommand):
                 # Update the target of this conditional statement and the
                 # target statment's target number accordingly.
-                    self.updateJumpLowerCond(stmtList, index, pos)
+                    self.updateJumpLowerCond(stmtList, index, pos,add_node_cnt)
             index += 1
 
         # We only allow non-jump statement addition as of now.
-
         stmtList.insert(pos, (inst, offset))
 
     def removeInstruction(self, stmtList, pos):

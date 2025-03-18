@@ -30,7 +30,7 @@ def add_edge_instrum_code(irHandler,ir,cfg):
     for idx,edge in enumerate(cfg_edges):
         block_A=edge[0]
         block_B=edge[1]
-        if(block_A.irID=="START" or block_B.irID=="END" or cfg.get_edge_label(block_A,block_B)=='Cond_True'):\
+        if(block_A.irID=="START" or block_B.irID=="END" or cfg.get_edge_label(block_A,block_B)=='Cond_True'):
         #Skiping start , end and fallthrough edges
             continue
         lstinstr_pos = block_A.irID+len(block_A.instrlist)+instr_added
@@ -51,7 +51,7 @@ def add_edge_instrum_code(irHandler,ir,cfg):
 
         # add instruction(go to target block)
         goto_inst=ChironAST.ConditionCommand(False)
-        irHandler.addInstruction(ir,goto_inst,instr_added+3,block_B.irID+2)
+        irHandler.addInstruction(ir,goto_inst,instr_added+3,offset=block_B.irID+2)
         
         instr_added+=4
 
@@ -63,7 +63,7 @@ def add_node_instrum_code(leaderIndices,irHandler,ir):
     for index,lidx in enumerate(leaderIndices):
         #Adding Counters in basic blocks
         array_incr_inst=ChironAST.ArrayIncrement("node_counters",index)
-        irHandler.addInstruction(ir,array_incr_inst,lidx+instr_added)
+        irHandler.addInstruction(ir,array_incr_inst,lidx+instr_added,add_node_cnt=1)
         instr_added+=1
 
 def add_instrumentation_code(irHandler):
@@ -81,8 +81,8 @@ def add_instrumentation_code(irHandler):
     irHandler.addInstruction(ir,node_array_init_inst,0)
 
     # Node Counter Initialisation of the first node
-    node_counter_init_inst=ChironAST.ArrayAssignment("node_counters",0,1)
-    irHandler.addInstruction(ir,node_counter_init_inst,1)
+    # node_counter_init_inst=ChironAST.ArrayAssignment("node_counters",0,1)
+    # irHandler.addInstruction(ir,node_counter_init_inst,1)
 
     #Edge counter arrays Initialisation
     edge_array_init_inst=ChironAST.ArrayInitialise("edge_counters",num_edges)
@@ -91,13 +91,12 @@ def add_instrumentation_code(irHandler):
     irHandler.addInstruction(ir,edge_source_init_inst,0)
     edge_target_init_inst=ChironAST.ArrayInitialise("edge_target",num_edges)
     irHandler.addInstruction(ir,edge_target_init_inst,0)
-    
+    global instr_added
+    instr_added=4
+    add_edge_instrum_code(irHandler,ir,cfg)
+    edge_code=instr_added
+    add_node_instrum_code(leaderIndices,irHandler,ir)
     # Jump to the user source code
     goto_code_inst=ChironAST.ConditionCommand(False)
-    irHandler.addInstruction(ir,goto_code_inst,5,1)
-    global instr_added
-    instr_added=6
-
-    add_edge_instrum_code(irHandler,ir,cfg)
-    add_node_instrum_code(leaderIndices,irHandler,ir)
+    irHandler.addInstruction(ir,goto_code_inst,4,offset=edge_code-3)
     return leaderIndices
