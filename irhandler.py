@@ -58,6 +58,9 @@ class IRHandler:
                 # update curr conditional instruction's target
                 stmtList[index] = (stmt, newTgt)
         else:
+            # for the case when we adding the node counter instruction , we need one less increment
+            # so that the jump happens to the correct position (node counter instruction)
+
             if tgt > 0 and index + tgt > pos:
                 newTgt = tgt + 1
                 # update curr conditional instruction's target
@@ -73,6 +76,7 @@ class IRHandler:
                 # update curr conditional instruction's target
                 stmtList[index] = (stmt, newTgt)
         else:
+            # similra to the above case, special case needed for node counter instruction
             if tgt < 0 and index + tgt <=pos:
                 newTgt = tgt -1
                 # update curr conditional instruction's target
@@ -90,10 +94,7 @@ class IRHandler:
         if pos >= len(stmtList):
             print("[error] POSITION given is past the instruction list.")
             return
-
-        # if isinstance(inst, ChironAST.ConditionCommand):
-        #     # print("[Skip] Instruction Type not supported for addition. \n")
-        #     return
+        
         index = 0
 
         # We must consider the conditional jumps and targets of
@@ -101,6 +102,9 @@ class IRHandler:
         # instruction must be added. Other conditional statements
         # will just shift without change of labels since
         # all the jump target numbers are relative.
+
+        # here offset is the target offset the instruction , 1 for non-conditonals
+        # add_node_cnt is a flag to indicate if the instruction being added is a node counter instruction
         while index<pos:
             if isinstance(stmtList[index][0], ChironAST.ConditionCommand):
                 # Update the target of this conditional statement and the
@@ -113,8 +117,6 @@ class IRHandler:
                 # target statment's target number accordingly.
                     self.updateJumpLowerCond(stmtList, index, pos,add_node_cnt)
             index += 1
-
-        # We only allow non-jump statement addition as of now.
         stmtList.insert(pos, (inst, offset))
 
     def removeInstruction(self, stmtList, pos):

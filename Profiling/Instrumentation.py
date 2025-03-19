@@ -61,7 +61,7 @@ def add_edge_instrum_code(irHandler,ir,cfg):
 def add_node_instrum_code(leaderIndices,irHandler,ir):
     global instr_added
     for index,lidx in enumerate(leaderIndices):
-        #Adding Counters in basic blocks
+        #Adding node counter instruction at the start of each basic block
         array_incr_inst=ChironAST.ArrayIncrement("node_counters",index)
         irHandler.addInstruction(ir,array_incr_inst,lidx+instr_added,add_node_cnt=1)
         instr_added+=1
@@ -71,7 +71,7 @@ def add_instrumentation_code(irHandler):
     #Computing leader Indices
     leaderIndices=compute_leader_indices(ir)
 
-    # Constructing th CFG
+    # Constructing the CFG for the original code
  
     cfg = cfgB.buildCFG(ir, "control_flow_graph", False)
     cfg_edges=cfg.edges()
@@ -81,23 +81,22 @@ def add_instrumentation_code(irHandler):
     node_array_init_inst=ChironAST.ArrayInitialise("node_counters",len(leaderIndices))
     irHandler.addInstruction(ir,node_array_init_inst,0)
 
-    # Node Counter Initialisation of the first node
-    # node_counter_init_inst=ChironAST.ArrayAssignment("node_counters",0,1)
-    # irHandler.addInstruction(ir,node_counter_init_inst,1)
-
-    #Edge counter arrays Initialisation
+    #Edge counter array Initialisation
     edge_array_init_inst=ChironAST.ArrayInitialise("edge_counters",num_edges)
     irHandler.addInstruction(ir,edge_array_init_inst,0)
+    #Edge source and target arrays Initialisation
     edge_source_init_inst=ChironAST.ArrayInitialise("edge_source",num_edges)
     irHandler.addInstruction(ir,edge_source_init_inst,0)
     edge_target_init_inst=ChironAST.ArrayInitialise("edge_target",num_edges)
     irHandler.addInstruction(ir,edge_target_init_inst,0)
     global instr_added
     instr_added=4
+    # Add instrumentation code for edges
     add_edge_instrum_code(irHandler,ir,cfg)
     edge_code=instr_added
+    # Add instrumentation code for nodes
     add_node_instrum_code(leaderIndices,irHandler,ir)
-    # Jump to the user source code
+    # Jump to the user source code after initialisation
     goto_code_inst=ChironAST.ConditionCommand(False)
     irHandler.addInstruction(ir,goto_code_inst,4,offset=edge_code-3)
     return leaderIndices
