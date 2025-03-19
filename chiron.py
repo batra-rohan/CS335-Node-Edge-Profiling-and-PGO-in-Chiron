@@ -303,10 +303,20 @@ if __name__ == "__main__":
         turtle.mainloop()
 
     if args.profiling:
+        file_path =args.progfl
+        # Extracting the filename without the extension
+        filename = os.path.splitext(os.path.basename(file_path))[0]
+        filename_org = f"control_flow_graph_{filename}"
+        filename_prfl=f"control_flow_graph_prfl_{filename}"
+        # Dumping Original CFG
+        cfg = cfgB.buildCFG(ir, "control_flow_graph", True)
+        cfgB.dumpCFG(cfg, filename_org)
         # Adding Instrumentation
         print("Welcome to Profiling Module !")
         leaderIndices=instr.add_instrumentation_code(irHandler)
-        irHandler.pretty_print(irHandler.ir)
+        # irHandler.pretty_print(irHandler.ir)
+        cfg_after = cfgB.buildCFG(ir, "control_flow_graph", True)
+        cfgB.dumpCFG(cfg_after, filename_prfl)
         # Running the code and computing the counters
         inptr = ConcreteInterpreter(irHandler, args)
         terminated = False

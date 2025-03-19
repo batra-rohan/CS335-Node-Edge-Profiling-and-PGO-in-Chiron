@@ -71,7 +71,8 @@ def add_instrumentation_code(irHandler):
     #Computing leader Indices
     leaderIndices=compute_leader_indices(ir)
 
-    # Constructing the CFG
+    # Constructing th CFG
+ 
     cfg = cfgB.buildCFG(ir, "control_flow_graph", False)
     cfg_edges=cfg.edges()
     num_edges=len(cfg_edges)
