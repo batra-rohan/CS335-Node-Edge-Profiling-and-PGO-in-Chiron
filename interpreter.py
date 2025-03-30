@@ -112,10 +112,10 @@ class ConcreteInterpreter(Interpreter):
             ntgt = self.handleNoOpCommand(stmt, tgt)
         elif isinstance(stmt,ChironAST.ArrayInitialise):
             ntgt=self.handleArrayInit(stmt,tgt)
-        elif isinstance(stmt,ChironAST.ArrayIncrement):
-            ntgt=self.handleArrayIncr(stmt,tgt)
-        elif isinstance(stmt,ChironAST.ArrayAssignment):
-            ntgt=self.handleArrayAss(stmt,tgt)
+        # elif isinstance(stmt,ChironAST.ArrayIncrement):
+        #     ntgt=self.handleArrayIncr(stmt,tgt)
+        # elif isinstance(stmt,ChironAST.ArrayAssignment):
+        #     ntgt=self.handleArrayAss(stmt,tgt)
         else:
             raise NotImplementedError("Unknown instruction: %s, %s."%(type(stmt), stmt))
 
@@ -145,9 +145,12 @@ class ConcreteInterpreter(Interpreter):
         # print(stmt)
         lhs = str(stmt.lvar).replace(":","")
         rhs = addContext(stmt.rexpr)
-        # print(lhs)
-        # print(rhs)
-        exec("setattr(self.prg,\"%s\",%s)" % (lhs,rhs))
+        print(lhs)
+        print(rhs)
+        if stmt.flag:
+            exec(f"self.prg.{lhs} = {rhs}")
+        else:
+            exec("setattr(self.prg,\"%s\",%s)" % (lhs,rhs))
         return 1
 
     def handleCondition(self, stmt, tgt):
@@ -181,16 +184,16 @@ class ConcreteInterpreter(Interpreter):
         n=stmt.len
         exec(f"setattr(self.prg, '{stmt.name}', [0] * {n})")
         return 1
-    def handleArrayIncr(self,stmt,tgt):
-        print("Array Increment Command")
-        pos=stmt.idx
-        exec(f"self.prg.{stmt.name}[{pos}] += 1")
-        return 1
-    def handleArrayAss(self,stmt,tgt):
-        print("Array Assignemnt Command")
-        pos=stmt.idx
-        exec(f"self.prg.{stmt.name}[{pos}] = {stmt.value}")
-        return 1
+    # def handleArrayIncr(self,stmt,tgt):
+    #     print("Array Increment Command")
+    #     pos=stmt.idx
+    #     exec(f"self.prg.{stmt.name}[{pos}] += 1")``
+    #     return 1
+    # def handleArrayAss(self,stmt,tgt):
+    #     print("Array Assignemnt Command")
+    #     pos=stmt.idx
+    #     exec(f"self.prg.{stmt.name}[{pos}] = {stmt.value}")
+    #     return 1
     
     def DumpProfilingData(self, leaderIndices):
         file_path = self.args.progfl

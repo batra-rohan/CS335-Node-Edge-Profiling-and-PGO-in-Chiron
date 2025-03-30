@@ -13,9 +13,10 @@ class Instruction(AST):
 
 
 class AssignmentCommand(Instruction):
-    def __init__(self, leftvar, rexpr):
+    def __init__(self, leftvar, rexpr,flag=False):
         self.lvar = leftvar
         self.rexpr = rexpr
+        self.flag = flag
 
     def __str__(self):
         return self.lvar.__str__() + " = " + self.rexpr.__str__()
@@ -35,25 +36,25 @@ class ArrayInitialise(Instruction):
         self.len = length
 
     def __str__(self):
-        return self.name + "(" +str(self.len) + ")"
+        return self.name + "[" +str(self.len) + "]"
 
 
-class ArrayIncrement(Instruction):
-    def __init__(self,arr_name,index):
-        self.name=arr_name
-        self.idx = index
+# class ArrayIncrement(Instruction):
+#     def __init__(self,arr_name,index):
+#         self.name=arr_name
+#         self.idx = index
 
-    def __str__(self):
-        return self.name + "[" +str(self.idx) + "]" + "++"
+#     def __str__(self):
+#         return self.name + "[" +str(self.idx) + "]" + "=" + self.name + "[" +str(self.idx) + "]"  " + 1"
 
-class ArrayAssignment(Instruction):
-    def __init__(self,arr_name,index,value):
-        self.name=arr_name
-        self.idx = index
-        self.value=value
+# class ArrayAssignment(Instruction):
+#     def __init__(self,arr_name,index,value):
+#         self.name=arr_name
+#         self.idx = index
+#         self.value=value
 
-    def __str__(self):
-        return self.name + "[" +str(self.idx) + "]" + "=" +str(self.value)
+#     def __str__(self):
+#         return self.name + "[" +str(self.idx) + "]" + "=" +str(self.value)
 
         
 # Not Implemented Yet.

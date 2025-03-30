@@ -17,6 +17,7 @@ instruction : assignment
 	    | penCommand
 	    | gotoCommand
 	    | pauseCommand
+		| arrinitCommand
 	    ;
 
 conditional : ifConditional | ifElseConditional ;
@@ -29,7 +30,7 @@ loop : 'repeat' value '[' strict_ilist ']' ;
 
 gotoCommand : 'goto' '(' expression ',' expression ')';
 
-assignment : VAR '=' expression
+assignment : VAR '=' expression | ARR_VAR '=' expression
 	   ;
 
 moveCommand : moveOp expression ;
@@ -38,6 +39,8 @@ moveOp : 'forward' | 'backward' | 'left' | 'right' ;
 penCommand : 'penup' | 'pendown' ;
 
 pauseCommand : 'pause' ;
+
+arrinitCommand: ARR_VAR;
 
 expression : 
              unaryArithOp expression               #unaryExpr
@@ -87,11 +90,14 @@ NOT: '!' ;
 
 value : NUM
       | VAR
+	  | ARR_VAR
       ;
 
 NUM  : [0-9]+        ;
 
 VAR  : ':'[a-zA-Z_] [a-zA-Z0-9]* ;
+
+ARR_VAR: ':'[a-zA-Z_] [a-zA-Z0-9_]* '[' [0-9]* ']' ;
 
 NAME : [a-zA-Z]+     ;
 

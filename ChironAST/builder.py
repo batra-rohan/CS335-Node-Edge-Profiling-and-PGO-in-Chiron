@@ -39,9 +39,14 @@ class astGenPass(tlangVisitor):
 
 
     def visitAssignment(self, ctx:tlangParser.AssignmentContext):
-        lval = ChironAST.Var(ctx.VAR().getText())
+        ARR_flag = False
+        if ctx.VAR():
+            lval = ChironAST.Var(ctx.VAR().getText())
+        else:
+            ARR_flag = True
+            lval = ChironAST.Var(ctx.ARR_VAR().getText())
         rval = self.visit(ctx.expression())
-        return [(ChironAST.AssignmentCommand(lval, rval), 1)]
+        return [(ChironAST.AssignmentCommand(lval, rval,ARR_flag), 1)]
 
 
     def visitIfConditional(self, ctx:tlangParser.IfConditionalContext):
@@ -144,6 +149,9 @@ class astGenPass(tlangVisitor):
             return ChironAST.Num(ctx.NUM().getText())
         elif ctx.VAR():
             return ChironAST.Var(ctx.VAR().getText())
+        elif ctx.ARR_VAR():
+            return ChironAST.Var(ctx.ARR_VAR().getText())
+        
 
     def visitLoop(self, ctx:tlangParser.LoopContext):
         # insert counter variable in IR for tracking repeat count
@@ -172,3 +180,12 @@ class astGenPass(tlangVisitor):
 
     def visitPenCommand(self, ctx:tlangParser.PenCommandContext):
         return [(ChironAST.PenCommand(ctx.getText()), 1)]
+    
+    def visitArrinitCommand(self, ctx:tlangParser.ArrinitCommandContext):
+        commd=ctx.getText()
+        open_bracket_index = commd.index('[')
+        close_bracket_index = commd.index(']')
+        # Extract the array name and index
+        arr_name = commd[1:open_bracket_index]   
+        length = commd[open_bracket_index + 1:close_bracket_index]
+        return [(ChironAST.ArrayInitialise(arr_name,length),1)]

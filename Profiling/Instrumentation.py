@@ -38,15 +38,15 @@ def add_edge_instrum_code(irHandler,ir,cfg):
             # Skipping "always" taken edges linked to unconditional instruction
             continue
         # add instruction(edge counter increment )
-        array_incr_inst=ChironAST.ArrayIncrement("edge_counters",idx)
+        array_incr_inst=ChironAST.AssignmentCommand(":edge_counters"+"["+str(idx)+"]",":edge_counters"+"["+str(idx)+"]" + " +1",True)
         irHandler.addInstruction(ir,array_incr_inst,instr_added)
 
         # add instruction(source assignment)
-        source_ass_inst=ChironAST.ArrayAssignment("edge_source",idx,block_A.irID+1)
+        source_ass_inst=ChironAST.AssignmentCommand(":edge_source"+"["+str(idx)+"]",str(block_A.irID+1),True)
         irHandler.addInstruction(ir,source_ass_inst,instr_added+1)
 
         # add instruction(target assignment)
-        target_ass_inst=ChironAST.ArrayAssignment("edge_target",idx,block_B.irID+1)
+        target_ass_inst=ChironAST.AssignmentCommand(":edge_target"+"["+str(idx)+"]",str(block_B.irID+1),True)
         irHandler.addInstruction(ir,target_ass_inst,instr_added+2)
 
         # add instruction(go to target block)
@@ -62,7 +62,7 @@ def add_node_instrum_code(leaderIndices,irHandler,ir):
     global instr_added
     for index,lidx in enumerate(leaderIndices):
         #Adding node counter instruction at the start of each basic block
-        array_incr_inst=ChironAST.ArrayIncrement("node_counters",index)
+        array_incr_inst=ChironAST.AssignmentCommand(":node_counters"+"["+str(index)+"]",":node_counters"+"["+str(index)+"]" + " +1",True)
         irHandler.addInstruction(ir,array_incr_inst,lidx+instr_added,add_node_cnt=1)
         instr_added+=1
 
