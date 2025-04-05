@@ -52,6 +52,10 @@ This project involves collecting node and edge profiling data using the Chiron f
 
 4. **Output Enhancements**:
    - Wrote code to display profiling data for nodes and edges in a `.csv` file.
+  
+### Milestone 3 (2<sup>nd</sup> April 2025)
+#### Work Done:
+ Implemented arrays- Array Initialisation and Array Arithmetic operations support in Chiron across frontend and backend.
 
 ---
 
