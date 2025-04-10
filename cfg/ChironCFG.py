@@ -86,4 +86,24 @@ class ChironCFG:
         edata = self.nxgraph.get_edge_data(u,v)
         return edata['label'] if len(edata) else 'T'
 
+    def set_edge_weights(self, weight_dict):
+        """
+        Set edge weights in the graph based on the provided dictionary.
+        :param weight_dict: dict where keys are (u, v) tuples and values are weights.
+        """
+        for (u, v), weight in weight_dict.items():
+            if self.nxgraph.has_edge(u, v):
+                self.nxgraph[u][v]['weight'] = weight
+            else:
+                raise ValueError(f"Edge ({u}, {v}) does not exist in the graph.")
+    def get_edge_weights(self):
+        """
+        Get a dictionary of edge weights in the graph.
+        :return: dict where keys are (u, v) tuples and values are weights.
+        """
+        weight_dict = {}
+        for u, v, data in self.nxgraph.edges(data=True):
+            weight_dict[(u, v)] = data.get('weight', None)
+        return weight_dict
+    
     # TODO: add more methods to expose other methods of the Networkx.DiGraph
