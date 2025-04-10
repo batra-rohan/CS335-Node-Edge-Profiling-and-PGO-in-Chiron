@@ -311,6 +311,10 @@ if __name__ == "__main__":
         # Dumping Original CFG
         cfg = cfgB.buildCFG(ir, "control_flow_graph", True)
         cfgB.dumpCFG(cfg, filename_org)
+        # Print the edges in the CFG
+        print("Edges in the CFG:")
+        for edge in cfg.edges():
+            print(f"{edge[0].irID} -> {edge[1].irID}")
         # Adding Instrumentation
         print("Welcome to Profiling Module !")
         leaderIndices=instr.add_instrumentation_code(irHandler)
@@ -326,7 +330,7 @@ if __name__ == "__main__":
             if terminated:
                 break
         # Displaying the counters
-        inptr.DumpProfilingData(leaderIndices)
+        inptr.DumpProfilingData(cfg,leaderIndices)
         print("Program Ended.")
         print()
         print("Press ESCAPE to exit")

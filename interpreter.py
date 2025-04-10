@@ -20,7 +20,7 @@ class Interpreter:
 
     def __init__(self, irHandler, params):
         self.ir = irHandler.ir
-        self.cfg = irHandler.cfg
+        cfg = irHandler.cfg
         self.pc = 0
         self.t_screen = turtle.getscreen()
         self.trtl = turtle.Turtle()
@@ -195,7 +195,7 @@ class ConcreteInterpreter(Interpreter):
     #     exec(f"self.prg.{stmt.name}[{pos}] = {stmt.value}")
     #     return 1
     
-    def DumpProfilingData(self, leaderIndices):
+    def DumpProfilingData(self, cfg, leaderIndices):
         file_path = self.args.progfl
 
         # Extracting the filename without the extension
@@ -204,25 +204,32 @@ class ConcreteInterpreter(Interpreter):
         # Reconstruct edge list from prg attributes
         edge_source_array = getattr(self.prg, 'edge_source')
         edge_target_array = getattr(self.prg, 'edge_target')
-        edge_instr_idx_array = getattr(self.prg, 'edge_instr_indices')
         edge_instr_values = getattr(self.prg, 'edge_counters')
+
+        # Print the instrumented edges with their counts
+        print("Instrumented Edges and Counts:")
+        for i in range(len(edge_source_array)):
+            src = edge_source_array[i]
+            tgt = edge_target_array[i]
+            count = edge_instr_values[i]
+            print(f"Edge from {src} to {tgt} has count {count}")
 
         # Build actual edge tuples from indices
         ecnt_edges = []
-        for i in edge_instr_idx_array:
+        for i in range(len(edge_source_array)):
             src = edge_source_array[i]
             tgt = edge_target_array[i]
-            for e in self.cfg.edges():
+            for e in cfg.edges():
                 if e[0].irID == src and e[1].irID == tgt:
                     ecnt_edges.append(e)
                     break
 
         # Compute edge counters for all edges
-        edge_counter_map = propagate_counts(self.cfg, ecnt_edges, edge_instr_values)
+        edge_counter_map = propagate_counts(cfg, ecnt_edges, edge_instr_values)
 
         # Map nodes to indices and back
-        node_id_map = {node: idx for idx, node in enumerate(self.cfg.nodes())}
-        node_counter_map = compute_node_counters(self.cfg, edge_counter_map)
+        node_id_map = {node: idx for idx, node in enumerate(cfg.nodes())}
+        node_counter_map = compute_node_counters(cfg, edge_counter_map)
 
         # Convert edge counters to arrays for dumping
         edge_counter_array = []
@@ -234,7 +241,7 @@ class ConcreteInterpreter(Interpreter):
             edge_tgt_array.append(v.irID)
 
         # Convert node counters to array
-        node_counter_array = [0] * len(self.cfg.nodes())
+        node_counter_array = [0] * len(cfg.nodes())
         for node, count in node_counter_map.items():
             node_counter_array[node_id_map[node]] = count
 
@@ -266,35 +273,38 @@ def propagate_counts(cfg, ecnt_edges, edge_counters):
     Given a set of edges `ecnt_edges` (those instrumented) and their counters,
     compute the frequencies for all other edges in the CFG using edge propagation algorithm.
     """
-    all_edges = list(cfg.edges())
-    cnt = {e: 0 for e in all_edges}
+    cnt = {e: 0 for e in cfg.nxgraph.edges()}
 
     # Initialize counters for instrumented edges
     for idx, e in enumerate(ecnt_edges):
         cnt[e] = edge_counters[idx]
 
+    visited = set()
+
     def dfs(v, incoming_edge):
-        in_edges = [e for e in all_edges if e[1] == v]
-        out_edges = [e for e in all_edges if e[0] == v]
+        if incoming_edge in visited:
+            return
+        visited.add(incoming_edge)
 
-        in_sum = 0
-        for e in in_edges:
-            if e != incoming_edge and e not in ecnt_edges:
-                dfs(e[0], e)
-            in_sum += cnt[e]
+        in_edges = [(u, v) for u in cfg.predecessors(v)]
+        out_edges = [(v, w) for w in cfg.successors(v)]
 
-        out_sum = 0
-        for e in out_edges:
-            if e != incoming_edge and e not in ecnt_edges:
-                dfs(e[1], e)
-            out_sum += cnt[e]
+        in_sum = sum(cnt[e] for e in in_edges)
+        out_sum = sum(cnt[e] for e in out_edges)
 
-        if incoming_edge is not None and incoming_edge not in ecnt_edges:
+        if incoming_edge not in ecnt_edges:
             cnt[incoming_edge] = max(in_sum, out_sum) - min(in_sum, out_sum)
 
-    # Run DFS from the entry point of the CFG
-    entry_node = cfg.graph['entry'] if 'entry' in cfg.graph else list(cfg.nodes)[0]
-    dfs(entry_node, None)
+        for e in in_edges:
+            if e not in ecnt_edges and e != incoming_edge:
+                dfs(e[0], e)
+        for e in out_edges:
+            if e not in ecnt_edges and e != incoming_edge:
+                dfs(e[1], e)
+
+    entry_node = cfg.entry
+    for succ in cfg.nxgraph.successors(entry_node):
+        dfs(succ, (entry_node, succ))
 
     return cnt
 

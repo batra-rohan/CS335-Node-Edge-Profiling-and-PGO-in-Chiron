@@ -33,7 +33,7 @@ def add_edge_instrum_code(irHandler, ir, cfg, selected_edges):
     for idx,edge in enumerate(cfg_edges):
         block_A=edge[0]
         block_B=edge[1]
-        if(block_A.irID=="START" or block_B.irID=="END" or cfg.get_edge_label(block_A,block_B)=='Cond_True'):
+        if(block_A.irID=="START" or block_A.irID=="END" or block_B.irID=="END" or block_B.irID=="START" or cfg.get_edge_label(block_A,block_B)=='Cond_True'):
         #Skiping start , end and fallthrough edges
             continue
         lstinstr_pos = block_A.irID+len(block_A.instrlist)+instr_added
@@ -173,7 +173,9 @@ def compute_edges_for_instrumentation(cfg):
     # Convert edge_weights to max-heap format by negating weights
     max_heap = []
     for idx, (u, v) in enumerate(edges):
-        weight = edge_weights.get((u, v), 0)
+        weight = edge_weights.get((u, v))
+        if weight is None:
+            weight = 0
         heapq.heappush(max_heap, (-weight, idx, u, v))
     
     parent = {node: node for node in nodes}
@@ -209,25 +211,32 @@ def add_instrumentation_code(irHandler):
 
     # Constructing the CFG for the original code
     cfg = cfgB.buildCFG(ir, "control_flow_graph", False)
+    #        # Print the edges in the CFG
+    # print("Edges in the CFG:")
+    # for edge in cfg.edges():
+    #     print(f"{edge[0].irID} -> {edge[1].irID}")
 
     compute_edge_weights(cfg)
+    # cfg_edges = cfg.edges()
+    # edge_weights = cfg.get_edge_weights()
+
+    # print("CFG Edges and Weights:")
+    # for edge in cfg_edges:
+    #     weight = edge_weights.get(edge, 0)
+    #     print(f"Edge {edge[0].irID} -> {edge[1].irID}, Weight: {weight}")
+
 
     instrumentation_edges = compute_edges_for_instrumentation(cfg)
-    print("Edges to be instrumented (not in max spanning tree):")
-    for edge in instrumentation_edges:
-        print(f"Edge {edge[0].irID} -> {edge[1].irID}")
+    # print("Edges to be instrumented (not in max spanning tree):")
+    # for edge in instrumentation_edges:
+    #     print(f"Edge {edge[0].irID} -> {edge[1].irID}")
+    # instrumentation_edges = cfg.edges()
 
     # Print the edges of the CFG along with their weights
-    cfg_edges = cfg.edges()
-    edge_weights = cfg.get_edge_weights()
 
-    print("CFG Edges and Weights:")
-    for edge in cfg_edges:
-        weight = edge_weights.get(edge, 0)
-        print(f"Edge {edge[0].irID} -> {edge[1].irID}, Weight: {weight}")
 
     cfg_edges=cfg.edges()
-    num_edges=len(cfg_edges)
+    num_edges=len(instrumentation_edges)
 
     #Edge counter array Initialisation
     edge_array_init_inst=ChironAST.ArrayInitialise("edge_counters",num_edges)
@@ -238,11 +247,11 @@ def add_instrumentation_code(irHandler):
     edge_target_init_inst=ChironAST.ArrayInitialise("edge_target",num_edges)
     irHandler.addInstruction(ir,edge_target_init_inst,0)
     global instr_added
-    instr_added=4
+    instr_added=3
     # Add instrumentation code for selected edges
     add_edge_instrum_code(irHandler, ir, cfg, instrumentation_edges)
     edge_code=instr_added
     # Jump to the user source code after initialisation
     goto_code_inst=ChironAST.ConditionCommand(False)
-    irHandler.addInstruction(ir,goto_code_inst,4,offset=edge_code-3)
+    irHandler.addInstruction(ir,goto_code_inst,3,offset=edge_code-2)
     return leaderIndices
