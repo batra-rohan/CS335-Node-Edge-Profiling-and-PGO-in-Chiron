@@ -138,11 +138,20 @@ def compute_edge_weights(cfg, loop_multiplier=10):
         postorder.reverse()
         return postorder
 
+    # Step 1: Topological Order
     topo_order = topological_sort(cfg)
 
+    # Step 2: Assign START node weight
+    START = next((n for n in cfg.nodes() if n.irID == "START"), None)
+    if START is not None:
+        node_weights[START] = 1.0
+    else:
+        raise ValueError("START node not found in CFG.")
+
     for node in topo_order:
-        incoming_edges = [(u, node) for u in cfg.predecessors(node) if (u, node) not in backedges]
-        node_weights[node] = sum(edge_weights.get(edge, 0) for edge in incoming_edges)
+        if node not in node_weights:
+            incoming_edges = [(u, node) for u in cfg.predecessors(node) if (u, node) not in backedges]
+            node_weights[node] = sum(edge_weights.get(edge, 0) for edge in incoming_edges)
 
         is_loop_entry = node in loop_entries
         W = node_weights[node] * loop_multiplier if is_loop_entry else node_weights[node]
@@ -152,10 +161,12 @@ def compute_edge_weights(cfg, loop_multiplier=10):
 
         for succ in cfg.successors(node):
             edge = (node, succ)
+            if edge in backedges:
+                continue  # skip for now
             if edge in exits:
                 edge_weights[edge] = W / len(exits) if exits else 0
             else:
-                edge_weights[edge] = (W - sum(edge_weights[e] for e in exits)) / num_non_exit if num_non_exit else 0
+                edge_weights[edge] = (W - sum(edge_weights.get(e, 0) for e in exits)) / num_non_exit if num_non_exit else 0
 
     cfg.set_edge_weights(edge_weights)
 
