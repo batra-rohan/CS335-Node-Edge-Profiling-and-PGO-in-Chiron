@@ -172,9 +172,9 @@ def compute_edges_for_instrumentation(cfg):
     
     # Convert edge_weights to max-heap format by negating weights
     max_heap = []
-    for (u, v) in edges:
+    for idx, (u, v) in enumerate(edges):
         weight = edge_weights.get((u, v), 0)
-        heapq.heappush(max_heap, (-weight, u, v))
+        heapq.heappush(max_heap, (-weight, idx, u, v))
     
     parent = {node: node for node in nodes}
     
@@ -194,7 +194,7 @@ def compute_edges_for_instrumentation(cfg):
 
     spanning_tree_edges = set()
     while max_heap and len(spanning_tree_edges) < len(nodes) - 1:
-        neg_w, u, v = heapq.heappop(max_heap)
+        neg_w, _, u, v = heapq.heappop(max_heap)
         if union(u, v):
             spanning_tree_edges.add((u, v))
     
