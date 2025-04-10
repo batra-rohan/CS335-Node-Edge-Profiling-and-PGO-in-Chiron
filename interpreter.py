@@ -201,69 +201,109 @@ class ConcreteInterpreter(Interpreter):
         # Extracting the filename without the extension
         filename = os.path.splitext(os.path.basename(file_path))[0]
 
-        # Obtain the node counters
-        node_counter_array = getattr(self.prg, 'node_counters')
-
-        # Obtain the edge-related arrays
-        edge_counter_array = getattr(self.prg, 'edge_counters')
+        # Reconstruct edge list from prg attributes
         edge_source_array = getattr(self.prg, 'edge_source')
         edge_target_array = getattr(self.prg, 'edge_target')
+        edge_instr_idx_array = getattr(self.prg, 'edge_instr_indices')
+        edge_instr_values = getattr(self.prg, 'edge_counters')
 
-        # Initialize arrays for jump and fall-through counters
-        jump_target_array = np.zeros(len(node_counter_array), dtype=int)
-        jump_counter_array = np.zeros(len(node_counter_array), dtype=int)
-        fall_through_counter_array = np.zeros(len(node_counter_array), dtype=int)
+        # Build actual edge tuples from indices
+        ecnt_edges = []
+        for i in edge_instr_idx_array:
+            src = edge_source_array[i]
+            tgt = edge_target_array[i]
+            for e in self.cfg.edges():
+                if e[0].irID == src and e[1].irID == tgt:
+                    ecnt_edges.append(e)
+                    break
 
-        # Compute jump and fall-through counters
-        for idx, source in enumerate(edge_source_array):
-            target = edge_target_array[idx]
+        # Compute edge counters for all edges
+        edge_counter_map = propagate_counts(self.cfg, ecnt_edges, edge_instr_values)
 
-            # Perform binary search to find the indices of source and target in leaderIndices
-            source_idx = bisect_left(leaderIndices, source)
-            if source != target:
-                # Has Jump
-                jump_target_array[source_idx] = target
-                jump_counter_array[source_idx] += edge_counter_array[idx]
+        # Map nodes to indices and back
+        node_id_map = {node: idx for idx, node in enumerate(self.cfg.nodes())}
+        node_counter_map = compute_node_counters(self.cfg, edge_counter_map)
 
+        # Convert edge counters to arrays for dumping
+        edge_counter_array = []
+        edge_src_array = []
+        edge_tgt_array = []
+        for (u, v), count in edge_counter_map.items():
+            edge_counter_array.append(count)
+            edge_src_array.append(u.irID)
+            edge_tgt_array.append(v.irID)
 
-        # Compute fall-through counters as node counter minus jump counter
-        for idx in range(len(node_counter_array)):
-            fall_through_counter_array[idx] = node_counter_array[idx] - jump_counter_array[idx]
+        # Convert node counters to array
+        node_counter_array = [0] * len(self.cfg.nodes())
+        for node, count in node_counter_map.items():
+            node_counter_array[node_id_map[node]] = count
 
-        # For nodes where jump counters are not updated, set them equal to node counters
-        for idx in range(len(node_counter_array)):
-            if jump_counter_array[idx] == 0:
-                jump_counter_array[idx] = node_counter_array[idx]
-                fall_through_counter_array[idx]=-1
-                
         # Generate the output filename
         filename = f"Profiling_Data_{filename}.csv"
 
         # Write profiling data to CSV
         with open(filename, 'w', newline='') as file:
             fieldnames = [
-                'Leader Index of Basic Block',
-                'Node Counter',
-                'Jump Target LI',
-                'Jump Edge Counter',
-                'Fall Through Edge Counter'
+                'Edge Index',
+                'Source Node',
+                'Target Node',
+                'Edge Counter',
+                '',
+                'Node Index',
+                'Node Counter'
             ]
             writer = csv.writer(file)
-
-            # Write the header
             writer.writerow(fieldnames)
 
-            # Write each block and its counter value
-            for idx, leader_index in enumerate(leaderIndices):
-                node_counter = node_counter_array[idx]
-                jump_target_li = jump_target_array[idx]
-                jump_edge_counter = jump_counter_array[idx]
-                fall_through_edge_counter = fall_through_counter_array[idx]
+            max_len = max(len(edge_counter_array), len(node_counter_array))
+            for i in range(max_len):
+                edge_idx_data = [i, edge_src_array[i], edge_tgt_array[i], edge_counter_array[i]] if i < len(edge_counter_array) else ['', '', '', '']
+                node_idx_data = [i, node_counter_array[i]] if i < len(node_counter_array) else ['', '']
+                writer.writerow(edge_idx_data + [''] + node_idx_data)
 
-                writer.writerow([
-                    leader_index,
-                    node_counter,
-                    jump_target_li,
-                    jump_edge_counter,
-                    fall_through_edge_counter
-                ])
+def propagate_counts(cfg, ecnt_edges, edge_counters):
+    """
+    Given a set of edges `ecnt_edges` (those instrumented) and their counters,
+    compute the frequencies for all other edges in the CFG using edge propagation algorithm.
+    """
+    all_edges = list(cfg.edges())
+    cnt = {e: 0 for e in all_edges}
+
+    # Initialize counters for instrumented edges
+    for idx, e in enumerate(ecnt_edges):
+        cnt[e] = edge_counters[idx]
+
+    def dfs(v, incoming_edge):
+        in_edges = [e for e in all_edges if e[1] == v]
+        out_edges = [e for e in all_edges if e[0] == v]
+
+        in_sum = 0
+        for e in in_edges:
+            if e != incoming_edge and e not in ecnt_edges:
+                dfs(e[0], e)
+            in_sum += cnt[e]
+
+        out_sum = 0
+        for e in out_edges:
+            if e != incoming_edge and e not in ecnt_edges:
+                dfs(e[1], e)
+            out_sum += cnt[e]
+
+        if incoming_edge is not None and incoming_edge not in ecnt_edges:
+            cnt[incoming_edge] = max(in_sum, out_sum) - min(in_sum, out_sum)
+
+    # Run DFS from the entry point of the CFG
+    entry_node = cfg.graph['entry'] if 'entry' in cfg.graph else list(cfg.nodes)[0]
+    dfs(entry_node, None)
+
+    return cnt
+
+def compute_node_counters(cfg, edge_counters):
+    """
+    Compute node counters from edge counters by summing the incoming edges for each node.
+    Alternatively, summing outgoing edges is also valid if edge counts are consistent.
+    """
+    node_counters = {v: 0 for v in cfg.nodes()}
+    for (u, v), count in edge_counters.items():
+        node_counters[v] += count
+    return node_counters
