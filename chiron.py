@@ -309,7 +309,7 @@ if __name__ == "__main__":
         filename_org = f"control_flow_graph_{filename}"
         filename_prfl=f"control_flow_graph_prfl_{filename}"
         # Dumping Original CFG
-        cfg = cfgB.buildCFG(ir, "control_flow_graph", True)
+        cfg = cfgB.buildCFG(ir, "control_flow_graph", False)
         cfgB.dumpCFG(cfg, filename_org)
         # Print the edges in the CFG
         print("Edges in the CFG:")
@@ -317,9 +317,9 @@ if __name__ == "__main__":
             print(f"{edge[0].irID} -> {edge[1].irID}")
         # Adding Instrumentation
         print("Welcome to Profiling Module !")
-        leaderIndices=instr.add_instrumentation_code(irHandler)
-        # irHandler.pretty_print(irHandler.ir)
-        cfg_after = cfgB.buildCFG(ir, "control_flow_graph", True)
+        instrumented_edges=instr.add_instrumentation_code(irHandler)
+        irHandler.pretty_print(irHandler.ir)
+        cfg_after = cfgB.buildCFG(ir, "control_flow_graph", False)
         cfgB.dumpCFG(cfg_after, filename_prfl)
         # Running the code and computing the counters
         inptr = ConcreteInterpreter(irHandler, args)
@@ -330,7 +330,7 @@ if __name__ == "__main__":
             if terminated:
                 break
         # Displaying the counters
-        inptr.DumpProfilingData(cfg,leaderIndices)
+        inptr.DumpProfilingData(cfg,instrumented_edges)
         print("Program Ended.")
         print()
         print("Press ESCAPE to exit")

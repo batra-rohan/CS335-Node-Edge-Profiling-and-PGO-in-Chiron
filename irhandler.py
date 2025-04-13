@@ -106,13 +106,13 @@ class IRHandler:
         # here offset is the target offset the instruction , 1 for non-conditonals
         # add_node_cnt is a flag to indicate if the instruction being added is a node counter instruction
         while index<pos:
-            if isinstance(stmtList[index][0], ChironAST.ConditionCommand):
+            if stmtList[index][1]!=1:
                 # Update the target of this conditional statement and the
                 # target statment's target number accordingly.
                 self.updateJumpUpperCond(stmtList, index, pos, add_node_cnt)
             index += 1
         while index<len(stmtList):
-            if isinstance(stmtList[index][0], ChironAST.ConditionCommand):
+            if stmtList[index][1]!=1:
                 # Update the target of this conditional statement and the
                 # target statment's target number accordingly.
                     self.updateJumpLowerCond(stmtList, index, pos,add_node_cnt)

@@ -8,6 +8,15 @@ from bisect import bisect_left  # Import for binary search
 
 Release="Chiron v5.3"
 
+def give_ir_ids(edge):
+    a=-1 if edge[0].irID=="START" else edge[0].irID
+    b=-1 if edge[1].irID=="START" else edge[1].irID
+    return (a,b)
+def give_node_ir(n):
+    if(n.irID=="START"):
+        return -1
+    else:
+        return n.irID
 def addContext(s):
     return str(s).strip().replace(":", "self.prg.")
 
@@ -78,6 +87,85 @@ class ProgramContext:
     pass
 
 # TODO: move to a different file
+import csv
+from collections import defaultdict, deque
+
+class EdgePropagator:
+    def __init__(self, cfg, edge_source_array, edge_target_array, edge_instr_values,instru_edges):
+        self.cfg = cfg
+
+        self.count_instr_edges = [(src,dst)for src, dst in zip(edge_source_array, edge_target_array)]
+        self.known_counts = dict(zip(self.count_instr_edges, edge_instr_values))
+        self.edge_list=[give_ir_ids(e) for e in instru_edges]
+        self.all_edges =[give_ir_ids(e) for e in cfg.edges()]
+        self.Ecnt = set(self.known_counts.keys())  # known edge frequencies
+        self.cnt = {e: self.known_counts.get(e, 0) for e in self.all_edges}
+        print(self.known_counts)
+        print(self.cnt)
+
+    def propogate_counts(self):
+        visited=set()
+        for node in self.cfg.nodes():
+            if node and node.irID == "START":
+                start_node = node
+                break
+        self._dfs(start_node,None,visited)
+    
+    def _dfs(self,v,parent_edge,visited):
+        if v in visited:
+            return
+        visited.add(v)
+        in_edges = [(u, v) for u in self.cfg.predecessors(v)]
+        out_edges = [(v, w) for w in self.cfg.successors(v)]
+
+        in_sum=0
+        for e in in_edges:
+            e_irs=give_ir_ids(e)
+            if(e!=parent_edge and e_irs not in self.edge_list):
+                self._dfs(e[0],e,visited)
+            in_sum=in_sum+self.cnt[e_irs]
+        
+        out_sum=0
+        for e in out_edges:
+            e_irs=give_ir_ids(e)
+            if(e!=parent_edge and e_irs not in self.edge_list):
+                self._dfs(e[1],e,visited)
+            out_sum=out_sum+self.cnt[e_irs]
+
+        if parent_edge is not None:
+            self.cnt[give_ir_ids(parent_edge)]=max(in_sum,out_sum)-min(in_sum,out_sum)
+
+
+    def compute_node_counts(self):
+        node_count=[]
+        for node in self.cfg.nodes():
+            out_edges = [(node, w) for w in self.cfg.successors(node)]
+            n_count=0
+            for edge in out_edges:
+                n_count+=self.cnt[give_ir_ids(edge)]
+            node_count.append((give_node_ir(node),n_count))
+        return node_count
+
+
+    def write_to_csv(self, edge_csv_path, node_csv_path):
+        with open(edge_csv_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["Source", "Target", "Frequency"])
+            for (u, v), freq in self.cnt.items():
+                u=u if u=="END" else u+1
+                v=v if v=="END" else v+1
+                writer.writerow([u, v, freq])
+
+        node_count = self.compute_node_counts()
+        with open(node_csv_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["Node", "Count"])
+            for items in node_count:
+                node=items[0]
+                node=node if node=="END" else node+1
+                count=items[1]
+                writer.writerow([node, count])
+
 class ConcreteInterpreter(Interpreter):
     # Ref: https://realpython.com/beginners-guide-python-turtle
     cond_eval = None # used as a temporary variable within the embedded program interpreter
@@ -96,7 +184,7 @@ class ConcreteInterpreter(Interpreter):
         stmt, tgt = self.ir[self.pc]
         print(stmt, stmt.__class__.__name__, tgt)
 
-        self.sanityCheck(self.ir[self.pc])
+        # self.sanityCheck(self.ir[self.pc])
 
         if isinstance(stmt, ChironAST.AssignmentCommand):
             ntgt = self.handleAssignment(stmt, tgt)
@@ -151,7 +239,7 @@ class ConcreteInterpreter(Interpreter):
             exec(f"self.prg.{lhs} = {rhs}")
         else:
             exec("setattr(self.prg,\"%s\",%s)" % (lhs,rhs))
-        return 1
+        return tgt
 
     def handleCondition(self, stmt, tgt):
         print("  Branch Instruction")
@@ -162,28 +250,28 @@ class ConcreteInterpreter(Interpreter):
     def handleMove(self, stmt, tgt):
         print("  MoveCommand")
         exec("self.trtl.%s(%s)" % (stmt.direction,addContext(stmt.expr)))
-        return 1
+        return tgt
 
     def handleNoOpCommand(self, stmt, tgt):
         print("  No-Op Command")
-        return 1
+        return tgt
 
     def handlePen(self, stmt, tgt):
         print("  PenCommand")
         exec("self.trtl.%s()"%(stmt.status))
-        return 1
+        return tgt
 
     def handleGotoCommand(self, stmt, tgt):
         print(" GotoCommand")
         xcor = addContext(stmt.xcor)
         ycor = addContext(stmt.ycor)
         exec("self.trtl.goto(%s, %s)" % (xcor, ycor))
-        return 1
+        return tgt
     def handleArrayInit(self,stmt,tgt):
         print("Array Initialisation Command")
         n=stmt.len
         exec(f"setattr(self.prg, '{stmt.name}', [0] * {n})")
-        return 1
+        return tgt
     # def handleArrayIncr(self,stmt,tgt):
     #     print("Array Increment Command")
     #     pos=stmt.idx
@@ -195,7 +283,7 @@ class ConcreteInterpreter(Interpreter):
     #     exec(f"self.prg.{stmt.name}[{pos}] = {stmt.value}")
     #     return 1
     
-    def DumpProfilingData(self, cfg, leaderIndices):
+    def DumpProfilingData(self, cfg,instru_edges):
         file_path = self.args.progfl
 
         # Extracting the filename without the extension
@@ -205,115 +293,6 @@ class ConcreteInterpreter(Interpreter):
         edge_source_array = getattr(self.prg, 'edge_source')
         edge_target_array = getattr(self.prg, 'edge_target')
         edge_instr_values = getattr(self.prg, 'edge_counters')
-
-        # Print the instrumented edges with their counts
-        print("Instrumented Edges and Counts:")
-        for i in range(len(edge_source_array)):
-            src = edge_source_array[i]
-            tgt = edge_target_array[i]
-            count = edge_instr_values[i]
-            print(f"Edge from {src} to {tgt} has count {count}")
-
-        # Build actual edge tuples from indices
-        ecnt_edges = []
-        for i in range(len(edge_source_array)):
-            src = edge_source_array[i]
-            tgt = edge_target_array[i]
-            for e in cfg.edges():
-                if e[0].irID == src and e[1].irID == tgt:
-                    ecnt_edges.append(e)
-                    break
-
-        # Compute edge counters for all edges
-        edge_counter_map = propagate_counts(cfg, ecnt_edges, edge_instr_values)
-
-        # Map nodes to indices and back
-        node_id_map = {node: idx for idx, node in enumerate(cfg.nodes())}
-        node_counter_map = compute_node_counters(cfg, edge_counter_map)
-
-        # Convert edge counters to arrays for dumping
-        edge_counter_array = []
-        edge_src_array = []
-        edge_tgt_array = []
-        for (u, v), count in edge_counter_map.items():
-            edge_counter_array.append(count)
-            edge_src_array.append(u.irID)
-            edge_tgt_array.append(v.irID)
-
-        # Convert node counters to array
-        node_counter_array = [0] * len(cfg.nodes())
-        for node, count in node_counter_map.items():
-            node_counter_array[node_id_map[node]] = count
-
-        # Generate the output filename
-        filename = f"Profiling_Data_{filename}.csv"
-
-        # Write profiling data to CSV
-        with open(filename, 'w', newline='') as file:
-            fieldnames = [
-                'Edge Index',
-                'Source Node',
-                'Target Node',
-                'Edge Counter',
-                '',
-                'Node Index',
-                'Node Counter'
-            ]
-            writer = csv.writer(file)
-            writer.writerow(fieldnames)
-
-            max_len = max(len(edge_counter_array), len(node_counter_array))
-            for i in range(max_len):
-                edge_idx_data = [i, edge_src_array[i], edge_tgt_array[i], edge_counter_array[i]] if i < len(edge_counter_array) else ['', '', '', '']
-                node_idx_data = [i, node_counter_array[i]] if i < len(node_counter_array) else ['', '']
-                writer.writerow(edge_idx_data + [''] + node_idx_data)
-
-def propagate_counts(cfg, ecnt_edges, edge_counters):
-    """
-    Given a set of edges `ecnt_edges` (those instrumented) and their counters,
-    compute the frequencies for all other edges in the CFG using edge propagation algorithm.
-    """
-    cnt = {e: 0 for e in cfg.nxgraph.edges()}
-
-    # Initialize counters for instrumented edges
-    for idx, e in enumerate(ecnt_edges):
-        cnt[e] = edge_counters[idx]
-
-    visited = set()
-
-    def dfs(v, incoming_edge):
-        if incoming_edge in visited:
-            return
-        visited.add(incoming_edge)
-
-        in_edges = [(u, v) for u in cfg.predecessors(v)]
-        out_edges = [(v, w) for w in cfg.successors(v)]
-
-        in_sum = sum(cnt[e] for e in in_edges)
-        out_sum = sum(cnt[e] for e in out_edges)
-
-        if incoming_edge not in ecnt_edges:
-            cnt[incoming_edge] = max(in_sum, out_sum) - min(in_sum, out_sum)
-
-        for e in in_edges:
-            if e not in ecnt_edges and e != incoming_edge:
-                dfs(e[0], e)
-        for e in out_edges:
-            if e not in ecnt_edges and e != incoming_edge:
-                dfs(e[1], e)
-
-    entry_node = cfg.entry
-    for succ in cfg.nxgraph.successors(entry_node):
-        dfs(succ, (entry_node, succ))
-
-    return cnt
-
-def compute_node_counters(cfg, edge_counters):
-    """
-    Compute node counters from edge counters by summing the incoming edges for each node.
-    Alternatively, summing outgoing edges is also valid if edge counts are consistent.
-    """
-    node_counters = {v: 0 for v in cfg.nodes()}
-    for (u, v), count in edge_counters.items():
-        node_counters[v] += count
-    return node_counters
+        propagator = EdgePropagator(cfg, edge_source_array, edge_target_array, edge_instr_values,instru_edges)
+        propagator.propogate_counts()
+        propagator.write_to_csv(f"{filename}_edge_frequencies.csv", f"{filename}_node_counts.csv")

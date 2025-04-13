@@ -63,7 +63,7 @@ def buildCFG(ir, cfgName="", isSingle=False):
     # adding edges
     for node in cfg:
         if node == endBB:
-            cfg.add_edge(endBB, startBB, label='start_to_end', color='black')
+            cfg.add_edge(endBB, startBB, label='end_to_start', color='black')
         listSize = len(node.instrlist)
         if listSize:
             irIdx = (node.instrlist[-1])[1]
