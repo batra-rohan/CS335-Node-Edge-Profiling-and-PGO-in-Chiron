@@ -191,7 +191,7 @@ if __name__ == "__main__":
     cmdparser.add_argument(
         "-ng",
         "--ngen",
-        help="number of times Genetic Algorithm itastgen.visitStart(parseTree)erates",
+        help="number of times Genetic Algorithm iterates",
         default=100,
         type=int,
     )
@@ -201,6 +201,13 @@ if __name__ == "__main__":
         help="To display computation to Console",
         default=True,
         type=bool,
+    )
+    cmdparser.add_argument(
+        "-input_file",
+        "--inputFile",
+        help="Path to the file containing multiple input dictionaries, one per line",
+        type=str,
+        default=None,
     )
 
     args = cmdparser.parse_args()
@@ -303,36 +310,51 @@ if __name__ == "__main__":
         turtle.mainloop()
 
     if args.profiling:
-        file_path =args.progfl
-        # Extracting the filename without the extension
+        file_path = args.progfl
         filename = os.path.splitext(os.path.basename(file_path))[0]
         filename_org = f"control_flow_graph_{filename}"
-        filename_prfl=f"control_flow_graph_prfl_{filename}"
+        filename_prfl = f"control_flow_graph_prfl_{filename}"
+        
         # Dumping Original CFG
         cfg = cfgB.buildCFG(ir, "control_flow_graph", False)
         cfgB.dumpCFG(cfg, filename_org)
-        # Print the edges in the CFG
         print("Edges in the CFG:")
         for edge in cfg.edges():
             print(f"{edge[0].irID} -> {edge[1].irID}")
-        # Adding Instrumentation
+        
         print("Welcome to Profiling Module !")
-        instrumented_edges=instr.add_instrumentation_code(irHandler)
+        instrumented_edges = instr.add_instrumentation_code(irHandler)
         irHandler.pretty_print(irHandler.ir)
         cfg_after = cfgB.buildCFG(ir, "control_flow_graph", False)
         cfgB.dumpCFG(cfg_after, filename_prfl)
-        # Running the code and computing the counters
-        inptr = ConcreteInterpreter(irHandler, args)
-        terminated = False
-        inptr.initProgramContext(args.params)
-        while True:
-            terminated = inptr.interpret()
-            if terminated:
-                break
-        # Displaying the counters
-        inptr.DumpProfilingData(cfg,instrumented_edges)
+
+        input_dicts = []
+        if args.inputFile:
+            with open(args.inputFile, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        input_dicts.append(ast.literal_eval(line))
+        else:
+            input_dicts.append(args.params)
+
+        for i, param_set in enumerate(input_dicts):
+            print(f"\n--- Running input {i} ---\n")
+            inptr = ConcreteInterpreter(irHandler, args)
+            inptr.initProgramContext(param_set)
+            terminated = False
+            while True:
+                terminated = inptr.interpret()
+                if terminated:
+                    break
+            output_file = f"{filename}_profile_run_{i}.txt"
+            with open(output_file, "w") as f:
+                sys.stdout = f
+                inptr.DumpProfilingData(cfg, instrumented_edges)
+                sys.stdout = sys.__stdout__
+            print(f"Profiling data for run {i} written to {output_file}")
+
         print("Program Ended.")
-        print()
         print("Press ESCAPE to exit")
         turtle.listen()
         turtle.onkeypress(stopTurtle, "Escape")
