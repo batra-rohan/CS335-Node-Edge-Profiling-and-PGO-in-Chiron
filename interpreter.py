@@ -104,17 +104,13 @@ class EdgePropagator:
         print(self.cnt)
 
     def propogate_counts(self):
-        visited=set()
         for node in self.cfg.nodes():
             if node and node.irID == "START":
                 start_node = node
                 break
-        self._dfs(start_node,None,visited)
+        self._dfs(start_node,None)
     
-    def _dfs(self,v,parent_edge,visited):
-        if v in visited:
-            return
-        visited.add(v)
+    def _dfs(self,v,parent_edge):
         in_edges = [(u, v) for u in self.cfg.predecessors(v)]
         out_edges = [(v, w) for w in self.cfg.successors(v)]
 
@@ -122,14 +118,14 @@ class EdgePropagator:
         for e in in_edges:
             e_irs=give_ir_ids(e)
             if(e!=parent_edge and e_irs not in self.edge_list):
-                self._dfs(e[0],e,visited)
+                self._dfs(e[0],e,)
             in_sum=in_sum+self.cnt[e_irs]
         
         out_sum=0
         for e in out_edges:
             e_irs=give_ir_ids(e)
             if(e!=parent_edge and e_irs not in self.edge_list):
-                self._dfs(e[1],e,visited)
+                self._dfs(e[1],e)
             out_sum=out_sum+self.cnt[e_irs]
 
         if parent_edge is not None:
@@ -283,12 +279,7 @@ class ConcreteInterpreter(Interpreter):
     #     exec(f"self.prg.{stmt.name}[{pos}] = {stmt.value}")
     #     return 1
     
-    def DumpProfilingData(self, cfg,instru_edges):
-        file_path = self.args.progfl
-
-        # Extracting the filename without the extension
-        filename = os.path.splitext(os.path.basename(file_path))[0]
-
+    def DumpProfilingData(self, cfg,instru_edges,filename):
         # Reconstruct edge list from prg attributes
         edge_source_array = getattr(self.prg, 'edge_source')
         edge_target_array = getattr(self.prg, 'edge_target')

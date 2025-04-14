@@ -7,6 +7,7 @@ from ChironAST.builder import astGenPass
 import abstractInterpretation as AI
 import dataFlowAnalysis as DFA
 from sbfl import testsuiteGenerator
+# from multiprocessing import Process
 
 sys.path.insert(0, "../Submission/")
 sys.path.insert(0, "ChironAST/")
@@ -101,6 +102,13 @@ if __name__ == "__main__":
         "--profiling",
         action="store_true",
         help="execute Chiron program, and collect node and edge profiling data",
+    )
+    cmdparser.add_argument(
+        "-vis",
+        "--visualiser",
+        action="store_true",
+        help="execute Chiron program, and collect node and edge profiling data",
+
     )
     cmdparser.add_argument("progfl")
 
@@ -318,9 +326,6 @@ if __name__ == "__main__":
         # Dumping Original CFG
         cfg = cfgB.buildCFG(ir, "control_flow_graph", False)
         cfgB.dumpCFG(cfg, filename_org)
-        print("Edges in the CFG:")
-        for edge in cfg.edges():
-            print(f"{edge[0].irID} -> {edge[1].irID}")
         
         print("Welcome to Profiling Module !")
         instrumented_edges = instr.add_instrumentation_code(irHandler)
@@ -337,9 +342,10 @@ if __name__ == "__main__":
                         input_dicts.append(ast.literal_eval(line))
         else:
             input_dicts.append(args.params)
-
         for i, param_set in enumerate(input_dicts):
             print(f"\n--- Running input {i} ---\n")
+            turtle.clearscreen()
+            turtle.resetscreen()
             inptr = ConcreteInterpreter(irHandler, args)
             inptr.initProgramContext(param_set)
             terminated = False
@@ -347,18 +353,16 @@ if __name__ == "__main__":
                 terminated = inptr.interpret()
                 if terminated:
                     break
-            output_file = f"{filename}_profile_run_{i}.txt"
-            with open(output_file, "w") as f:
-                sys.stdout = f
-                inptr.DumpProfilingData(cfg, instrumented_edges)
-                sys.stdout = sys.__stdout__
+            output_file = f"\{filename}\{filename}_run_{i}"
+            inptr.DumpProfilingData(cfg, instrumented_edges,output_file)
             print(f"Profiling data for run {i} written to {output_file}")
 
-        print("Program Ended.")
-        print("Press ESCAPE to exit")
-        turtle.listen()
-        turtle.onkeypress(stopTurtle, "Escape")
-        turtle.mainloop()
+            print("Program Ended.")
+            print("Press ESCAPE to exit")
+            time.sleep(2)
+            # turtle.listen()
+            # turtle.onkeypress(stopTurtle, "Escape")
+            # turtle.mainloop()
 
     if args.SBFL:
         if not args.buggy:
