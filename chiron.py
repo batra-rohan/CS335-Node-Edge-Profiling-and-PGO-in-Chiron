@@ -26,6 +26,9 @@ import submissionDFA as DFASub
 import submissionAI as AISub
 from sbflSubmission import computeRanks
 import csv
+import pandas as pd
+import os
+import glob
 import Profiling.Instrumentation as instr
 
 
@@ -107,8 +110,7 @@ if __name__ == "__main__":
         "-vis",
         "--visualiser",
         action="store_true",
-        help="execute Chiron program, and collect node and edge profiling data",
-
+        help="Helps in visualising the profiling data for a given program over multiple runs",
     )
     cmdparser.add_argument("progfl")
 
@@ -353,7 +355,7 @@ if __name__ == "__main__":
                 terminated = inptr.interpret()
                 if terminated:
                     break
-            output_file = f"\{filename}\{filename}_run_{i}"
+            output_file = f"{filename}_run_{i}"
             inptr.DumpProfilingData(cfg, instrumented_edges,output_file)
             print(f"Profiling data for run {i} written to {output_file}")
 
@@ -363,6 +365,46 @@ if __name__ == "__main__":
             # turtle.listen()
             # turtle.onkeypress(stopTurtle, "Escape")
             # turtle.mainloop()
+    if args.visualiser:
+        print("Welcome to Visualisation Module !")
+        file_path = args.progfl
+        filename = os.path.splitext(os.path.basename(file_path))[0]
+        edge_pattern=f"{filename}_run_*_edge_counts.csv"
+        csv_files=glob.glob(edge_pattern)
+
+        total_edge_frequency=None
+        edge_source=None
+        edge_target=None
+
+        for file in csv_files:
+            df=pd.read_csv(file)
+            
+            if total_edge_frequency is None:
+                total_edge_frequency=df["Count"].copy()
+                edge_source=df["Source"].copy()
+                edge_target=df["Target"].copy()
+
+            else:
+                total_edge_frequency+=df["Count"]
+
+
+
+        node_pattern=f"{filename}_run_*_node_counts.csv"
+        node_csv_files=glob.glob(node_pattern)
+
+        total_node_frequency=None
+        node_indices=None
+
+        for file in node_csv_files:
+            df=pd.read_csv(file)
+            
+            if total_node_frequency is None:
+                total_node_frequency=df["Count"].copy()
+                node_indices=df["Node"].copy()
+
+            else:
+                total_node_frequency+=df["Count"]
+        irHandler.pretty_print_profile_data(irHandler.ir,edge_source,edge_target,total_edge_frequency,node_indices,total_node_frequency)
 
     if args.SBFL:
         if not args.buggy:

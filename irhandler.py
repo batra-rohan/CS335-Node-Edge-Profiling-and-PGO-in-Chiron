@@ -1,6 +1,6 @@
 import antlr4
 import pickle
-
+import numpy as np
 from turtparse.parseError import *
 from turtparse.tlangParser import tlangParser
 from turtparse.tlangLexer import tlangLexer
@@ -156,4 +156,32 @@ class IRHandler:
         print("The number after the opcode name represents the jump offset \nrelative to that statement.\n")
         for idx, item in enumerate(irList):
             print(f"[L{idx}]".rjust(5), item[0], f"[{item[1]}]")
+
+    def pretty_print_profile_data(self, irList,edge_source,edge_target,edge_count,node_indices,node_counts):
+        node_data={}
+        edge_data={}
+        src_tgt={}
+        node_li=[]
+        for i,node_idx in enumerate(node_indices):
+            node_data[node_idx]=node_counts[i]
+            if node_idx!="END":
+                node_li.append(int(node_idx))
+        node_li.sort()
+        for i,edge_src in enumerate(edge_source):
+            edge_data[(edge_src,edge_target[i])]=edge_count[i]
+            src_tgt[edge_src]=edge_target[i]
+        for idx, item in enumerate(irList):
+            if(node_data.get(str(idx)) is not None):
+                pos=node_li.index(idx)
+                if pos+1<len(node_li):
+                    fall_through=node_li[pos+1]
+                else:
+                    fall_through=node_li[pos]+1
+                jump=fall_through-1+irList[fall_through-1][1]
+                if jump!=fall_through:
+                    print(f"{node_data.get(str(idx),0)},{edge_data.get((str(idx),str(jump)),0)},{edge_data.get((str(idx),str(fall_through)),0)}->[L{idx}]".rjust(5), item[0], f"[{item[1]}]")
+                else:
+                    print(f"{node_data.get(str(idx),0)},{edge_data.get((str(idx),str(jump)),0)}->[L{idx}]".rjust(5), item[0], f"[{item[1]}]")
+            else:
+                 print(f"       [L{idx}]".rjust(5), item[0], f"[{item[1]}]")
     

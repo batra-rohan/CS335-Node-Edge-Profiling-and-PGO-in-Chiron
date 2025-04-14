@@ -146,7 +146,7 @@ class EdgePropagator:
     def write_to_csv(self, edge_csv_path, node_csv_path):
         with open(edge_csv_path, 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(["Source", "Target", "Frequency"])
+            writer.writerow(["Source", "Target", "Count"])
             for (u, v), freq in self.cnt.items():
                 u=u if u=="END" else u+1
                 v=v if v=="END" else v+1
@@ -286,4 +286,4 @@ class ConcreteInterpreter(Interpreter):
         edge_instr_values = getattr(self.prg, 'edge_counters')
         propagator = EdgePropagator(cfg, edge_source_array, edge_target_array, edge_instr_values,instru_edges)
         propagator.propogate_counts()
-        propagator.write_to_csv(f"{filename}_edge_frequencies.csv", f"{filename}_node_counts.csv")
+        propagator.write_to_csv(f"{filename}_edge_counts.csv", f"{filename}_node_counts.csv")
