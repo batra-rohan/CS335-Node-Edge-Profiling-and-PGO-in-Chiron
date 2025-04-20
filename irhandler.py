@@ -158,6 +158,7 @@ class IRHandler:
             print(f"[L{idx}]".rjust(5), item[0], f"[{item[1]}]")
 
     def pretty_print_profile_data(self, irList,edge_source,edge_target,edge_count,node_indices,node_counts):
+        # Function to print the profiling data annotated to the IR
         node_data={}
         edge_data={}
         src_tgt={}
@@ -179,9 +180,12 @@ class IRHandler:
                     fall_through=node_li[pos]+1
                 jump=fall_through-1+irList[fall_through-1][1]
                 if jump!=fall_through:
+                    # For the case when there is jump and fall through (if-else)
                     print(f"{node_data.get(str(idx),0)},{edge_data.get((str(idx),str(jump)),0)},{edge_data.get((str(idx),str(fall_through)),0)}->[L{idx}]".rjust(5), item[0], f"[{item[1]}]")
                 else:
+                    # For the case when the edge if always taken (control flow edge)
                     print(f"{node_data.get(str(idx),0)},{edge_data.get((str(idx),str(jump)),0)}->[L{idx}]".rjust(5), item[0], f"[{item[1]}]")
             else:
+                    # For the instructions within a basic block
                  print(f"       [L{idx}]".rjust(5), item[0], f"[{item[1]}]")
     

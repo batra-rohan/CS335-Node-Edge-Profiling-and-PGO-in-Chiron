@@ -2,8 +2,55 @@ import sys
 from cfg.ChironCFG import *
 import ChironAST.ChironAST as ChironAST
 import cfg.cfgBuilder as cfgB
+import heapq
+
+# We have implemented the optimal Eprfl(Ecnt) from the paper: Optimally Profiling and Tracing Programs THOMAS BALL and JAMES R. LARUS 
+# doi: https://dl.acm.org/doi/pdf/10.1145/183432.183527 
+
+
+def add_instrumentation_code(irHandler):
+
+    """ MAIN DRIVER FUNCTION """
+
+    ir=irHandler.ir
+    #Computing leader Indices
+    leaderIndices=compute_leader_indices(ir)
+
+    # Constructing the CFG for the original code
+    cfg = cfgB.buildCFG(ir, "control_flow_graph", False)
+
+    #Computing the edge weights as per the weighting algorithm in the paper
+    compute_edge_weights(cfg)
+
+    #Computing the minimum possible edges required for instrumentation
+    instrumentation_edges = compute_edges_for_instrumentation(cfg)
+    # print("Edges to be instrumented (not in max spanning tree):")
+    # for edge in instrumentation_edges:
+    #     print(f"Edge {edge[0].irID} -> {edge[1].irID}")
+
+    num_edges=len(instrumentation_edges)
+
+    #Edge counter array Initialisation
+    edge_array_init_inst=ChironAST.ArrayInitialise("edge_counters",num_edges)
+    irHandler.addInstruction(ir,edge_array_init_inst,0)
+    #Edge source and target arrays Initialisation
+    edge_source_init_inst=ChironAST.ArrayInitialise("edge_source",num_edges)
+    irHandler.addInstruction(ir,edge_source_init_inst,0)
+    edge_target_init_inst=ChironAST.ArrayInitialise("edge_target",num_edges)
+    irHandler.addInstruction(ir,edge_target_init_inst,0)
+    global instr_added
+    instr_added=3
+    # Add instrumentation code for selected edges
+    add_edge_instrum_code(irHandler, ir, cfg, instrumentation_edges)
+    instr_count=instr_added
+    # Jump to the user source code after initialisation
+    goto_code_inst=ChironAST.ConditionCommand(False)
+    irHandler.addInstruction(ir,goto_code_inst,3,offset=instr_count-2)
+    return instrumentation_edges
+
 
 def compute_leader_indices(ir):
+    """Computes the leader indices for the given IR list."""
     leaderIndices = [0,len(ir)]
     # finding leaders in the IR
     for idx, item in enumerate(ir):
@@ -27,8 +74,10 @@ def compute_leader_indices(ir):
     return leaderIndices
 
 def add_edge_instrum_code(irHandler, ir, cfg, selected_edges):
+
+    """Adds instrumentation code to the selected edges."""
     global instr_added
-    # Get the set of edges selected for instrumentation (edges not in max spanning tree)
+   
     cfg_edges = selected_edges
     for idx,edge in enumerate(cfg_edges):
         block_A=edge[0]
@@ -41,12 +90,6 @@ def add_edge_instrum_code(irHandler, ir, cfg, selected_edges):
         if(block_B.irID=="START"):
             block_B.irID=-1
         lstinstr_pos = block_A.irID+len(block_A.instrlist)+instr_added
-        # print(ir[lstinstr_pos][0])
-        # if(not isinstance(ir[lstinstr_pos][0], ChironAST.ConditionCommand)):
-        #     print("Inside")
-        #     print(ir[lstinstr_pos][0])
-        #     goto_inst=ChironAST.ConditionCommand(False)
-        #     irHandler.addInstruction(ir,goto_inst,lstinstr_pos+1,offset=-(block_A.irID+len(block_A.instrlist)+1))
 
         # add instruction(edge counter increment )
         array_incr_inst=ChironAST.AssignmentCommand(":edge_counters"+"["+str(idx)+"]",":edge_counters"+"["+str(idx)+"]" + " +1",True)
@@ -70,6 +113,11 @@ def add_edge_instrum_code(irHandler, ir, cfg, selected_edges):
         irHandler.update_target(ir,lstinstr_pos+4,-(block_A.irID+len(block_A.instrlist)+4)) 
 
 def compute_edge_weights(cfg, loop_multiplier=10):
+
+    """"Computes the weights of different edges in the CFG , as discussed in the paper"""
+
+    """ Intuition: Less weight to deeply nested edges"""
+
     def dfs_backedges(cfg, start, visited, rec_stack, backedges):
         visited.add(start)
         rec_stack.add(start)
@@ -172,7 +220,8 @@ def compute_edge_weights(cfg, loop_multiplier=10):
     cfg.set_edge_weights(edge_weights)
 
 def compute_edges_for_instrumentation(cfg):
-    import heapq
+
+    """Computes the set Ecnt such that E-Ecnt is a maximum spanning tree of the CFG."""
 
     edge_weights = cfg.get_edge_weights()
     edges = cfg.edges()
@@ -182,8 +231,6 @@ def compute_edges_for_instrumentation(cfg):
             startBB=n
         if(n.irID=="END"):
             endBB=n
-    
-    # Convert edge_weights to max-heap format by negating weights
     max_heap = []
     for idx, (u, v) in enumerate(edges):
         weight = edge_weights.get((u, v))
@@ -217,55 +264,4 @@ def compute_edges_for_instrumentation(cfg):
     
     all_edges = set(edges)
     instrumentation_edges = all_edges - spanning_tree_edges
-    return instrumentation_edges
-
-def add_instrumentation_code(irHandler):
-    ir=irHandler.ir
-    #Computing leader Indices
-    leaderIndices=compute_leader_indices(ir)
-
-    # Constructing the CFG for the original code
-    cfg = cfgB.buildCFG(ir, "control_flow_graph", False)
-    #        # Print the edges in the CFG
-    # print("Edges in the CFG:")
-    # for edge in cfg.edges():
-    #     print(f"{edge[0].irID} -> {edge[1].irID}")
-    compute_edge_weights(cfg)
-    # cfg_edges = cfg.edges()
-    # edge_weights = cfg.get_edge_weights()
-
-    # print("CFG Edges and Weights:")
-    # for edge in cfg_edges:
-    #     weight = edge_weights.get(edge, 0)
-    #     print(f"Edge {edge[0].irID} -> {edge[1].irID}, Weight: {weight}")
-
-
-    instrumentation_edges = compute_edges_for_instrumentation(cfg)
-    print("Edges to be instrumented (not in max spanning tree):")
-    for edge in instrumentation_edges:
-        print(f"Edge {edge[0].irID} -> {edge[1].irID}")
-    # instrumentation_edges = cfg.edges()
-
-    # Print the edges of the CFG along with their weights
-
-
-    cfg_edges=cfg.edges()
-    num_edges=len(instrumentation_edges)
-
-    #Edge counter array Initialisation
-    edge_array_init_inst=ChironAST.ArrayInitialise("edge_counters",num_edges)
-    irHandler.addInstruction(ir,edge_array_init_inst,0)
-    #Edge source and target arrays Initialisation
-    edge_source_init_inst=ChironAST.ArrayInitialise("edge_source",num_edges)
-    irHandler.addInstruction(ir,edge_source_init_inst,0)
-    edge_target_init_inst=ChironAST.ArrayInitialise("edge_target",num_edges)
-    irHandler.addInstruction(ir,edge_target_init_inst,0)
-    global instr_added
-    instr_added=3
-    # Add instrumentation code for selected edges
-    add_edge_instrum_code(irHandler, ir, cfg, instrumentation_edges)
-    edge_code=instr_added
-    # Jump to the user source code after initialisation
-    goto_code_inst=ChironAST.ConditionCommand(False)
-    irHandler.addInstruction(ir,goto_code_inst,3,offset=edge_code-2)
     return instrumentation_edges

@@ -320,6 +320,8 @@ if __name__ == "__main__":
         turtle.mainloop()
 
     if args.profiling:
+
+        print("Welcome to Profiling Module !")
         file_path = args.progfl
         filename = os.path.splitext(os.path.basename(file_path))[0]
         filename_org = f"control_flow_graph_{filename}"
@@ -329,9 +331,13 @@ if __name__ == "__main__":
         cfg = cfgB.buildCFG(ir, "control_flow_graph", False)
         cfgB.dumpCFG(cfg, filename_org)
         
-        print("Welcome to Profiling Module !")
+        #Adding the instrumentation code
         instrumented_edges = instr.add_instrumentation_code(irHandler)
+
+        #printing the instrumented IR
         irHandler.pretty_print(irHandler.ir)
+
+        # Dumping Instrumented CFG
         cfg_after = cfgB.buildCFG(ir, "control_flow_graph", False)
         cfgB.dumpCFG(cfg_after, filename_prfl)
 
@@ -344,15 +350,18 @@ if __name__ == "__main__":
                         input_dicts.append(ast.literal_eval(line))
         else:
             input_dicts.append(args.params)
+
+
         for i, param_set in enumerate(input_dicts):
+            # Runs the programme and collects profiling data for each input in the input file
             print(f"\n--- Running input {i} ---\n")
             turtle.clearscreen()
             turtle.resetscreen()
-            inptr = ConcreteInterpreter(irHandler, args)
+            inptr = PrflInterpreter(irHandler, args)
             inptr.initProgramContext(param_set)
             terminated = False
             while True:
-                terminated = inptr.interpret()
+                terminated = inptr.interpret_count()
                 if terminated:
                     break
             output_file = f"{filename}_run_{i}"
@@ -361,17 +370,21 @@ if __name__ == "__main__":
 
             print("Program Ended.")
             print("Press ESCAPE to exit")
-            time.sleep(2)
-            # turtle.listen()
-            # turtle.onkeypress(stopTurtle, "Escape")
-            # turtle.mainloop()
+            time.sleep(1)
+    
+
+
     if args.visualiser:
+        # This module autmotaically collects the profiling data files for the runs of a programme and summarises the data
+        # into a single file. It also visualises the data by annotating it to the IR.
         print("Welcome to Visualisation Module !")
         file_path = args.progfl
         filename = os.path.splitext(os.path.basename(file_path))[0]
         edge_pattern=f"{filename}_run_*_edge_counts.csv"
         csv_files=glob.glob(edge_pattern)
 
+
+        #Collecting the edge profiling data from different runs
         total_edge_frequency=None
         edge_source=None
         edge_target=None
@@ -388,7 +401,7 @@ if __name__ == "__main__":
                 total_edge_frequency+=df["Count"]
 
 
-
+        # Collecting the node profiling data from different runs
         node_pattern=f"{filename}_run_*_node_counts.csv"
         node_csv_files=glob.glob(node_pattern)
 
@@ -404,7 +417,22 @@ if __name__ == "__main__":
 
             else:
                 total_node_frequency+=df["Count"]
+        # Annotating the IR with the profiling data
         irHandler.pretty_print_profile_data(irHandler.ir,edge_source,edge_target,total_edge_frequency,node_indices,total_node_frequency)
+        
+        #Dumping the combined profiling data
+        node_file_path=f"{filename}_total_node_counts.csv"
+        with open(node_file_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["Node", "Count"])
+            for idx,node_idx in enumerate(node_indices):
+                writer.writerow([node_idx, total_node_frequency[idx]])
+        edge_file_path=f"{filename}_total_edge_counts.csv"
+        with open(edge_file_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["Source", "Target", "Count"])
+            for i,edge_src in enumerate(edge_source):
+                writer.writerow([edge_src, edge_target[i], total_edge_frequency[i]])
 
     if args.SBFL:
         if not args.buggy:

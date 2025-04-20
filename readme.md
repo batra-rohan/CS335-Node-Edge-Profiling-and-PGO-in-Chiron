@@ -57,14 +57,20 @@ This project involves collecting node and edge profiling data using the Chiron f
 #### Work Done:
  Implemented arrays- Array Initialisation and Array Arithmetic operations support in Chiron across frontend and backend.
 
+### Final Submisson (20 <sup>th</sup> April 2025)
+#### Work Done:
+- Implemented the optimal algorithm for profiling from  Optimally Profiling and Tracing Programs THOMAS BALL and JAMES R. LARUS 
+- Provided functionality to collect profiling data for multiple inputs from an input file
+- Implemented a data visualiser that combines all the profiling data and presents it annotated to the IR (inspired by gprof's annotated source listing)
+
 ---
 
 ## Execution Instructions
-
-### Example Command:
+## Collecting Profiling Data
+### Example Command for collecting data:
 ```bash
 $ cd ChironCore
-$ ./chiron.py -prfl ./example/example1.tl -d '{":x": 20, "y": 30, ":z": 20, ":p": 40}'
+$ ./chiron.py -prfl ./example/example1.tl -input_file example1_input.text
 ```
 
 ### Current Functionality:
@@ -73,61 +79,66 @@ $ ./chiron.py -prfl ./example/example1.tl -d '{":x": 20, "y": 30, ":z": 20, ":p"
    - Generates and saves the control flow graph for the instrumented IR as `control_flow_graph_prfl_$ProgName$.png`.
 
 2. **Instrumentation**:
-   - Adds instrumentation code for node profiling and edge profiling of critical edges.
+   - Adds instrumentation code for node profiling and edge profiling of critical edges as per the optimal algorithm
 
 3. **Execution and Profiling**:
-   - Executes the modified program, updates counters, and calculates profiling data.
+   - Executes the instrumented code for each set of input parameters in the 'input file' , computes the profiling data and dumps it.
 
 4. **Output**:
-   - Dumps profiling data into a `.csv` file named `Profiling_Data_$ProgName$.csv`.
+   - Dumps the node profiling data into a `.csv` file named `{file_name}_run_*_node_counts.csv` for each input parameter set in the input file.
+   - Dumps the edge profiling data into a `.csv` file named `{file_name}_run_*_edge_counts.csv` for each input parameter set in the input fle.
 
 ---
 
 ## Output `.csv` File Format
 
-The output `.csv` file contains the following columns:
-1. **Leader Index of Basic Block**: Leader indices of all basic blocks.
-2. **Node Counter**: Node counters for each basic block.
-3. **Jump Target LI**: Leader index of the target node (basic block) for jump edges.
-4. **Jump Edge Counter**: Counter for the edge between the current block and the jump target.
-5. **Fall Through Edge Counter**: Counter for the fall-through edge (if any). Displays `-1` if no fall-through edge exists.
+The output `.csv` file  for the node data contains the following columns:
+1. **Node**: Leader indices (index position in the IR) of the basic block.
+2. **Node Counter**: Node counters for the basic block.
+
+
+The output `.csv` file  for the edge data contains the following columns:
+1. **Source**: Leader index of the source node (basic block) of the edge.
+2. **Target**: Leader index of the destination (target) node (baisc block) of the edge.
+3. **Fall Through Edge Counter**: Count value for that edge.
+
+---
+## Visualising collected profile Data
+### Example Command for collecting data:
+```bash
+$ cd ChironCore
+$ ./chiron.py -vis ./example/example1.tl 
+```
+
+### Current Functionality:
+This feature automatically reads the profiling data for all the runs corresponding to the programme (all the files with the file name format) and combines the complete data.
+**Output**:
+   - Dumps the combined node profiling data into a `.csv` file named `{file_name}_toal_node_counts.csv`.
+   - Dumps the combined edge profiling data into a `.csv` file named `{file_name}_total_edge_counts.csv`.
+   - Prints the programme IR annotated with the combined profiling data
 
 ---
 
-## Testing
+## Output  Format
 
-- Test programs are available in the `Test_Progs` folder. These include examples with nested loops, conditionals, and complex jumps/fall-throughs.
-- The correctness of the profiling functionality has been verified by:
-  - Comparing output patterns generated using the `-r` and `-prfl` flags to ensure identical semantics and control flow.
-  - Analyzing control flow graphs to verify profiling counters and matching them with output data.
+** x,y,z --> IR Instruction ** or
+** x,y --> IR Instruction **
 
+The first instruction of all the basic blocks (instructions at leader indices) are annotated.
+x: Node Count for the basic block
+y: Edge count for the jump edge / the edge count for the control flow edge (always taken)
+z (if present): Edge count for the fall through edge
 ---
 
 ## Future Work
-1. Collect and analyze profiling data for various examples.
-2. Implement Profile-Guided Optimizations (PGO).
-3. Enable execution with random inputs and display combined profiling data.
+1. Implement Profile-Guided Optimizations (PGO) based on the collected profiling data.
 
 ---
 
 ## Supplementary Information: Profiling Algorithm
 
-### Node Profiling
-1. Compute leader indices of the program and build the control flow graph (CFG).
-2. Initialize a node counter array (size = number of basic blocks) to zero.
-3. Add a node counter at the start of each basic block to count executions.
-
-### Edge Profiling
-1. Create three arrays (size = number of edges in CFG) to store:
-   - Counter values.
-   - Source leader indices.
-   - Target leader indices.
-2. For each critical jump edge:
-   - Modify the target to jump to an intermediate point where:
-     - The counter is updated.
-     - Source and target indices are set.
-   - Jump to the originally intended target.
-3. Profiling data for fall-through and unconditional edges is computed using node data and critical edge counters.
+We have the optimal Eprfl(Ecnt) from the paper: Optimally Profiling and Tracing Programs THOMAS BALL and JAMES R. LARUS 
+doi: https://dl.acm.org/doi/pdf/10.1145/183432.183527 to do edge profiling. Node Counts have been inferred from the collected edge profiling data.
 
 ---
 
