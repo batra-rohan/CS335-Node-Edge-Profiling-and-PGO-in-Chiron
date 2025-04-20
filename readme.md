@@ -53,81 +53,91 @@ This project involves collecting node and edge profiling data using the Chiron f
 4. **Output Enhancements**:
    - Wrote code to display profiling data for nodes and edges in a `.csv` file.
   
+---
+
 ### Milestone 3 (2<sup>nd</sup> April 2025)
 #### Work Done:
- Implemented arrays- Array Initialisation and Array Arithmetic operations support in Chiron across frontend and backend.
+- Implemented arrays: Array Initialization and Array Arithmetic operations support in Chiron across frontend and backend.
 
-### Final Submisson (20 <sup>th</sup> April 2025)
+---
+
+### Final Submission (20<sup>th</sup> April 2025)
 #### Work Done:
-- Implemented the optimal algorithm for profiling from  Optimally Profiling and Tracing Programs THOMAS BALL and JAMES R. LARUS 
-- Provided functionality to collect profiling data for multiple inputs from an input file
-- Implemented a data visualiser that combines all the profiling data and presents it annotated to the IR (inspired by gprof's annotated source listing)
+- Implemented the optimal algorithm for profiling from *Optimally Profiling and Tracing Programs* by Thomas Ball and James R. Larus.
+- Provided functionality to collect profiling data for multiple inputs from an input file.
+- Implemented a data visualizer that combines all the profiling data and presents it annotated to the IR (inspired by gprof's annotated source listing).
 
 ---
 
 ## Execution Instructions
-## Collecting Profiling Data
-### Example Command for collecting data:
+
+### Collecting Profiling Data
+#### Example Command for collecting data:
 ```bash
 $ cd ChironCore
 $ ./chiron.py -prfl ./example/example1.tl -input_file example1_input.text
 ```
 
-### Current Functionality:
+#### Current Functionality:
 1. **Control Flow Graphs**:
    - Generates and saves the control flow graph for the original (un-instrumented) IR as `control_flow_graph_$ProgName$.png`.
    - Generates and saves the control flow graph for the instrumented IR as `control_flow_graph_prfl_$ProgName$.png`.
 
 2. **Instrumentation**:
-   - Adds instrumentation code for node profiling and edge profiling of critical edges as per the optimal algorithm
+   - Adds instrumentation code for node profiling and edge profiling of critical edges as per the optimal algorithm.
 
 3. **Execution and Profiling**:
-   - Executes the instrumented code for each set of input parameters in the 'input file' , computes the profiling data and dumps it.
+   - Executes the instrumented code for each set of input parameters in the input file, computes the profiling data, and dumps it.
 
 4. **Output**:
    - Dumps the node profiling data into a `.csv` file named `{file_name}_run_*_node_counts.csv` for each input parameter set in the input file.
-   - Dumps the edge profiling data into a `.csv` file named `{file_name}_run_*_edge_counts.csv` for each input parameter set in the input fle.
+   - Dumps the edge profiling data into a `.csv` file named `{file_name}_run_*_edge_counts.csv` for each input parameter set in the input file.
 
 ---
 
 ## Output `.csv` File Format
 
-The output `.csv` file  for the node data contains the following columns:
+### Node Data
+The output `.csv` file for the node data contains the following columns:
 1. **Node**: Leader indices (index position in the IR) of the basic block.
 2. **Node Counter**: Node counters for the basic block.
 
-
-The output `.csv` file  for the edge data contains the following columns:
+### Edge Data
+The output `.csv` file for the edge data contains the following columns:
 1. **Source**: Leader index of the source node (basic block) of the edge.
-2. **Target**: Leader index of the destination (target) node (baisc block) of the edge.
+2. **Target**: Leader index of the destination (target) node (basic block) of the edge.
 3. **Fall Through Edge Counter**: Count value for that edge.
 
 ---
-## Visualising collected profile Data
-### Example Command for collecting data:
+
+## Visualizing Collected Profile Data
+#### Example Command for visualizing data:
 ```bash
 $ cd ChironCore
 $ ./chiron.py -vis ./example/example1.tl 
 ```
 
-### Current Functionality:
-This feature automatically reads the profiling data for all the runs corresponding to the programme (all the files with the file name format) and combines the complete data.
+#### Current Functionality:
+This feature automatically reads the profiling data for all the runs corresponding to the program (all the files with the file name format) and combines the complete data.
+
 **Output**:
-   - Dumps the combined node profiling data into a `.csv` file named `{file_name}_toal_node_counts.csv`.
+   - Dumps the combined node profiling data into a `.csv` file named `{file_name}_total_node_counts.csv`.
    - Dumps the combined edge profiling data into a `.csv` file named `{file_name}_total_edge_counts.csv`.
-   - Prints the programme IR annotated with the combined profiling data
+   - Prints the program IR annotated with the combined profiling data.
 
 ---
 
-## Output  Format
+## Output Format
 
-** x,y,z --> IR Instruction ** or
-** x,y --> IR Instruction **
+Annotated IR instructions are formatted as:
+- **x, y, z --> IR Instruction**  
+- **x, y --> IR Instruction**
 
-The first instruction of all the basic blocks (instructions at leader indices) are annotated.
-x: Node Count for the basic block
-y: Edge count for the jump edge / the edge count for the control flow edge (always taken)
-z (if present): Edge count for the fall through edge
+The first instruction of all the basic blocks (instructions at leader indices) are annotated:
+- `x`: Node count for the basic block.
+- `y`: Edge count for the jump edge / the edge count for the control flow edge (always taken).
+- `z` (if present): Edge count for the fall-through edge.
+
 ---
 
 ## Future Work
@@ -137,8 +147,9 @@ z (if present): Edge count for the fall through edge
 
 ## Supplementary Information: Profiling Algorithm
 
-We have the optimal Eprfl(Ecnt) from the paper: Optimally Profiling and Tracing Programs THOMAS BALL and JAMES R. LARUS 
-doi: https://dl.acm.org/doi/pdf/10.1145/183432.183527 to do edge profiling. Node Counts have been inferred from the collected edge profiling data.
+We have used the optimal `Eprfl(Ecnt)` from the paper: *Optimally Profiling and Tracing Programs* by Thomas Ball and James R. Larus.  
+DOI: [https://dl.acm.org/doi/pdf/10.1145/183432.183527](https://dl.acm.org/doi/pdf/10.1145/183432.183527)  
+Node counts have been inferred from the collected edge profiling data.
 
 ---
 
